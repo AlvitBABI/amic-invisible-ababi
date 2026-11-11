@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://wxtmedefbfsklfcqeuna.supabase.co/rest/v1/'; 
+const SUPABASE_URL = 'https://wxtmedefbfsklfcqeuna.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable__WbCTrsXTmcrpDurJx5mXQ_MaEE6v6u'; 
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
