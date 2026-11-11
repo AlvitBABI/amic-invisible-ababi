@@ -549,7 +549,7 @@ export default function App() {
                 <div>
                   <h2 className="text-lg font-bold text-[#FFF9EC]">Identificació</h2>
                   <p className="text-xs text-[#B6BDAF] mt-1">
-                    Introdueix el teu <span className="text-[#E9BD65] font-semibold">PIN de 4 dígits</span> o PIN d'organitzador:
+                    Introdueix el teu <span className="text-[#E9BD65] font-semibold">PIN de 4 dígits</span>:
                   </p>
                 </div>
 
@@ -598,7 +598,7 @@ export default function App() {
         </main>
 
         <footer className="max-w-md mx-auto w-full text-center text-[11px] text-[#718475] pb-4">
-          Sincronitzat amb Supabase 🎄
+          🎄 creat amb amor per l'Alvit 🎄
         </footer>
       </div>
     );
