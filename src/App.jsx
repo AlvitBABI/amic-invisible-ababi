@@ -3,22 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Gift, UserPlus, Trash2, Copy, Check, Sparkles, Eye, EyeOff, 
   RefreshCw, Unlock, KeyRound, ShieldCheck, AlertCircle, 
-  Heart, Plus, ArrowRight, LogOut, ShieldAlert, Loader2
+  Heart, Plus, ArrowRight, LogOut, ShieldAlert, Loader2, PlusCircle
 } from 'lucide-react';
 
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Paste your Project URL here
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Paste your anon public key here
-const DRAW_ID = 'familia-2026'; // Unique ID for your family's draw in the 'draws' table
+const SUPABASE_URL = 'https://wxtmedefbfsklfcqeuna.supabase.co/rest/v1/'; // Paste your Project URL here
+const SUPABASE_ANON_KEY = 'sb_publishable__WbCTrsXTmcrpDurJx5mXQ_MaEE6v6u'; // Paste your anon public key here
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function App() {
   // Database State
-  const [drawData, setDrawData] = useState(null); // Row from 'draws' table
+  const [drawData, setDrawData] = useState(null); // Row from 'draws' table (id: int8, name: text, etc.)
   const [dbParticipants, setDbParticipants] = useState([]); // Rows from 'participants' table
-  const [recipientWishlist, setRecipientWishlist] = useState([]); // Rows from 'wishlist_items' for target
-  const [myWishlist, setMyWishlist] = useState([]); // Rows from 'wishlist_items' for logged-in user
+  const [recipientWishlist, setRecipientWishlist] = useState([]); // Rows from 'wishlist_items'
+  const [myWishlist, setMyWishlist] = useState([]); // Rows from 'wishlist_items'
   const [isLoading, setIsLoading] = useState(true);
 
   // Navigation / Login State
@@ -30,12 +29,13 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
 
   // Admin Setup State
+  const [drawNameInput, setDrawNameInput] = useState('familia-2026'); // Name/slug for the draw
   const [nameInput, setNameInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [showBulkInput, setShowBulkInput] = useState(false);
   const [setupParticipants, setSetupParticipants] = useState([]); // [{ name, pin }]
   const [adminPinInput, setAdminPinInput] = useState('1234');
-  const [budget, setBudget] = useState('20€');
+  const [budget, setBudget] = useState('30€');
   const [eventDate, setEventDate] = useState('');
   const [drawError, setDrawError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -43,33 +43,39 @@ export default function App() {
   const [copiedEmergencyLink, setCopiedEmergencyLink] = useState(false);
 
   // Participant View State
-  const [currentGiver, setCurrentGiver] = useState(null); // Row from 'participants'
+  const [currentGiver, setCurrentGiver] = useState(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [newWishItem, setNewWishItem] = useState('');
 
-  // Load initial data from Supabase & check Emergency Token
+  // Load draw based on URL parameter (e.g. ?draw=familia-2026) on mount
   useEffect(() => {
-    loadInitialData();
+    const params = new URLSearchParams(window.location.search);
+    const drawSlug = params.get('draw');
+    if (drawSlug) {
+      loadDrawByName(drawSlug);
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
-  const loadInitialData = async () => {
+  const loadDrawByName = async (drawName) => {
     setIsLoading(true);
     try {
-      // 1. Fetch draw config
-      const { data: draw } = await supabase
+      // 1. Fetch draw config by name field
+      const { data: draw, error } = await supabase
         .from('draws')
         .select('*')
-        .eq('id', DRAW_ID)
+        .eq('name', drawName)
         .single();
 
       if (draw) {
         setDrawData(draw);
 
-        // 2. Fetch all participants for this draw
+        // 2. Fetch participants linked via draw_id (int8)
         const { data: parts } = await supabase
           .from('participants')
           .select('*')
-          .eq('draw_id', DRAW_ID);
+          .eq('draw_id', draw.id);
 
         if (parts) setDbParticipants(parts);
 
@@ -80,24 +86,23 @@ export default function App() {
           setMode('admin_panel');
           setAdminTab('results');
         }
+      } else {
+        setDrawError("No s'ha trobat cap sorteig amb aquest nom.");
       }
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.error('Error loading draw:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch wishlists when a participant logs in
   const loadWishlistsForUser = async (participant, allParticipants) => {
-    // 1. Load my own wishlist items
     const { data: mine } = await supabase
       .from('wishlist_items')
       .select('*')
       .eq('participant_id', participant.id);
     setMyWishlist(mine || []);
 
-    // 2. Find my recipient's participant ID and load their wishlist items
     const recipientObj = allParticipants.find(p => p.name === participant.recipient_name);
     if (recipientObj) {
       const { data: theirs } = await supabase
@@ -158,6 +163,12 @@ export default function App() {
       setDrawError('Es necessiten almenys 3 participants per fer el sorteig!');
       return;
     }
+    const cleanDrawName = drawNameInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!cleanDrawName) {
+      setDrawError('El nom del sorteig no pot estar buit.');
+      return;
+    }
+
     setDrawError('');
     setIsSaving(true);
 
@@ -182,8 +193,11 @@ export default function App() {
     }
 
     const emergencyToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    const newDraw = {
-      id: DRAW_ID,
+    
+    // We insert into draws table. Since id is int8, we omit id or let Postgres auto-increment it, 
+    // and query back the row to get the generated int8 id.
+    const newDrawRecord = {
+      name: cleanDrawName,
       admin_pin: adminPinInput.trim() || '1234',
       emergency_token: emergencyToken,
       budget: budget || '20€',
@@ -191,16 +205,20 @@ export default function App() {
     };
 
     try {
-      // 1. Clean up old data if re-running draw
-      await supabase.from('participants').delete().eq('draw_id', DRAW_ID);
+      // 1. Insert Draw record and get back its int8 ID
+      const { data: insertedDraw, error: drawErr } = await supabase
+        .from('draws')
+        .insert(newDrawRecord)
+        .select()
+        .single();
 
-      // 2. Save Draw record
-      const { error: drawErr } = await supabase.from('draws').upsert(newDraw);
       if (drawErr) throw drawErr;
 
-      // 3. Insert Participant records
+      const drawIdInt8 = insertedDraw.id;
+
+      // 2. Insert Participant records using the int8 draw_id
       const participantRows = givers.map((giver, idx) => ({
-        draw_id: DRAW_ID,
+        draw_id: drawIdInt8,
         name: giver.name,
         pin: giver.pin,
         recipient_name: receivers[idx].name
@@ -213,21 +231,24 @@ export default function App() {
 
       if (partErr) throw partErr;
 
-      setDrawData(newDraw);
+      setDrawData(insertedDraw);
       setDbParticipants(insertedParts || []);
+      
+      // Update URL query string to include ?draw=name
+      window.history.pushState({}, '', `?draw=${cleanDrawName}`);
       setAdminTab('results');
     } catch (err) {
       console.error(err);
-      setDrawError('Error guardant a Supabase. Revisa les taules i permisos (RLS).');
+      setDrawError('Error guardant a Supabase. Comprova que el nom del sorteig no estigui duplicat.');
     } finally {
       setIsSaving(false);
     }
   };
 
   // --- URL HELPERS ---
-  const getMasterUrl = () => window.location.origin + window.location.pathname;
-  const getEmergencyUrl = () => drawData?.emergency_token 
-    ? `${window.location.origin}${window.location.pathname}?admin=${drawData.emergency_token}` 
+  const getMasterUrl = () => drawData?.name ? `${window.location.origin}${window.location.pathname}?draw=${drawData.name}` : '';
+  const getEmergencyUrl = () => drawData?.name && drawData?.emergency_token 
+    ? `${window.location.origin}${window.location.pathname}?draw=${drawData.name}&admin=${drawData.emergency_token}` 
     : '';
 
   const copyMasterLink = () => {
@@ -250,11 +271,10 @@ export default function App() {
     if (!input) return;
 
     if (!drawData) {
-      setLoginError("Encara no s'ha configurat cap sorteig.");
+      setLoginError("Selecciona o carrega un sorteig vàlid.");
       return;
     }
 
-    // 1. Admin login check
     if (input === drawData.admin_pin) {
       setMode('admin_panel');
       setAdminTab('results');
@@ -262,7 +282,6 @@ export default function App() {
       return;
     }
 
-    // 2. Participant PIN check
     const match = dbParticipants.find(p => p.pin === input);
     if (match) {
       setIsLoading(true);
@@ -285,7 +304,16 @@ export default function App() {
     setMode('login');
   };
 
-  // --- WISHLIST HANDLERS (Relational table: wishlist_items) ---
+  const handleStartNewDraw = () => {
+    window.history.pushState({}, '', window.location.pathname);
+    setDrawData(null);
+    setDbParticipants([]);
+    setSetupParticipants([]);
+    setMode('admin_panel');
+    setAdminTab('setup');
+  };
+
+  // --- WISHLIST HANDLERS ---
   const handleAddWishItem = async (e) => {
     e?.preventDefault();
     if (!newWishItem.trim() || !currentGiver) return;
@@ -317,7 +345,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-950 text-emerald-400 flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="text-xs text-slate-400">Connectant amb la base de dades...</span>
+        <span className="text-xs text-slate-400">Carregant dades del sorteig...</span>
       </div>
     );
   }
@@ -333,25 +361,27 @@ export default function App() {
             <Gift className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">Amic Invisible Secret</h1>
-          <p className="text-xs text-slate-400 mt-1">Accés segur amb codi PIN personalitzat</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {drawData ? `Sorteig actiu: "${drawData.name}"` : 'Accés amb codi PIN'}
+          </p>
         </header>
 
-        <main className="max-w-md mx-auto w-full px-2">
+        <main className="max-w-md mx-auto w-full px-2 space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             {!drawData ? (
               <div className="text-center space-y-4 py-4">
                 <div className="w-12 h-12 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto">
                   <AlertCircle className="w-6 h-6" />
                 </div>
-                <h2 className="text-lg font-bold text-white">Cap sorteig actiu</h2>
+                <h2 className="text-lg font-bold text-white">Cap sorteig seleccionat</h2>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Si ets l'organitzador i vols configurar el sorteig des de zero, fes clic aquí:
+                  Assegura't d'utilitzar l'enllaç correcte proporcionat per l'organitzador (amb <code>?draw=nom-del-sorteig</code>) o crea un nou sorteig:
                 </p>
                 <button
-                  onClick={() => { setMode('admin_panel'); setAdminTab('setup'); }}
+                  onClick={handleStartNewDraw}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
                 >
-                  Configurar nou sorteig <ArrowRight className="w-4 h-4" />
+                  <PlusCircle className="w-4 h-4" /> Crear un nou Sorteig
                 </button>
               </div>
             ) : (
@@ -359,7 +389,7 @@ export default function App() {
                 <div>
                   <h2 className="text-lg font-bold text-white">Identificació</h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Introdueix el teu <span className="text-amber-400 font-semibold">PIN de 4 dígits</span> (o el PIN d'organitzador):
+                    Introdueix el teu <span className="text-amber-400 font-semibold">PIN de 4 dígits</span>:
                   </p>
                 </div>
 
@@ -396,10 +426,19 @@ export default function App() {
               </form>
             )}
           </div>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={handleStartNewDraw}
+              className="text-xs text-slate-400 hover:text-emerald-400 transition inline-flex items-center gap-1.5"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Vols organitzar un altre sorteig diferent?
+            </button>
+          </div>
         </main>
 
         <footer className="max-w-md mx-auto w-full text-center text-[11px] text-slate-600 pb-4">
-          Sincronitzat al núvol amb Supabase 🎄
+          Sincronitzat amb Supabase 🎄
         </footer>
       </div>
     );
@@ -417,7 +456,7 @@ export default function App() {
               <div className="bg-gradient-to-tr from-emerald-600 to-teal-500 p-2 rounded-xl text-white">
                 <Gift className="w-5 h-5" />
               </div>
-              <span className="font-bold text-lg text-emerald-100">Amic Invisible</span>
+              <span className="font-bold text-lg text-emerald-100">Amic Invisible ({drawData?.name})</span>
             </div>
             <button
               onClick={handleLogout}
@@ -434,7 +473,6 @@ export default function App() {
             Participant connectat: <strong className="text-emerald-400">{currentGiver.name}</strong>
           </div>
 
-          {/* Secret Reveal Card */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6">
             <div className="inline-flex items-center space-x-2 bg-emerald-950 border border-emerald-500/30 text-emerald-300 text-xs font-semibold px-3 py-1 rounded-full">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -463,7 +501,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Recipient's Live Wishlist from Database */}
                   <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
                     <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
                       <Heart className="w-3.5 h-3.5 text-rose-400" />
@@ -498,7 +535,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* My Own Wishlist Box */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
@@ -506,7 +542,7 @@ export default function App() {
                 <span>La meva llista de suggeriments</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Es guarda al núvol perquè qui et regali ho vegi a l'instant!
+                Es guarda al núvol instantàniament!
               </p>
             </div>
 
@@ -572,12 +608,20 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            onClick={() => setMode('login')}
-            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700"
-          >
-            <KeyRound className="w-4 h-4 text-amber-400" /> Sortir a Inici / Login
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleStartNewDraw}
+              className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl flex items-center gap-1 font-semibold"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Nou Sorteig
+            </button>
+            <button
+              onClick={() => setMode('login')}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700"
+            >
+              <KeyRound className="w-4 h-4 text-amber-400" /> Login
+            </button>
+          </div>
         </div>
       </header>
 
@@ -596,9 +640,228 @@ export default function App() {
               adminTab === 'setup' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400'
             }`}
           >
-            1. Nou Sorteig ({setupParticipants.length})
+            1. Configuració i Participants ({setupParticipants.length})
           </button>
           {drawData && (
             <button
               onClick={() => setAdminTab('results')}
               className={`pb-3 text-sm font-semibold border-b-2 ${
+                adminTab === 'results' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400'
+              }`}
+            >
+              2. Sorteig Actiu "{drawData.name}" ({dbParticipants.length})
+            </button>
+          )}
+        </div>
+
+        {adminTab === 'setup' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 space-y-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-emerald-400" />
+                  <span>Afegir Participant</span>
+                </h3>
+
+                {!showBulkInput ? (
+                  <form onSubmit={handleAddParticipant} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Nom..."
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!nameInput.trim()}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2 rounded-xl text-xs"
+                    >
+                      Afegir participant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkInput(true)}
+                      className="w-full text-xs text-slate-400 hover:text-slate-200 py-1"
+                    >
+                      O enganxar llista de cop...
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      rows={4}
+                      placeholder={"Laura\nMarc\nClara"}
+                      value={bulkInput}
+                      onChange={(e) => setBulkInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={handleAddBulk} className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-semibold">
+                        Afegir tots
+                      </button>
+                      <button onClick={() => setShowBulkInput(false)} className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl text-xs">
+                        Cancel·lar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+                <h3 className="font-bold text-white text-xs">Detalls del Sorteig</h3>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Nom únic del sorteig (URL)</label>
+                  <input
+                    type="text"
+                    value={drawNameInput}
+                    onChange={(e) => setDrawNameInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-emerald-400 font-mono"
+                    placeholder="familia-2026"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Aquest serà l'identificador web al link.</p>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Contrasenya d'Organitzador</label>
+                  <input
+                    type="text"
+                    value={adminPinInput}
+                    onChange={(e) => setAdminPinInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-amber-400 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Presupost</label>
+                  <input
+                    type="text"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Data</label>
+                  <input
+                    type="text"
+                    placeholder="24 de Desembre"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="font-bold text-white text-base">Participants per Sortejar</h3>
+                <span className="text-xs text-emerald-400">{setupParticipants.length} persones</span>
+              </div>
+
+              {setupParticipants.length === 0 ? (
+                <div className="py-10 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+                  Afegeix almenys 3 participants.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {setupParticipants.map((person, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-slate-950 border border-slate-800 px-3.5 py-2.5 rounded-2xl text-xs">
+                      <div>
+                        <span className="font-bold text-white block">{person.name}</span>
+                        <span className="font-mono text-amber-400 text-[11px]">PIN: <strong>{person.pin}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleRegeneratePin(idx)} className="text-slate-500 hover:text-amber-400 p-1">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleRemoveParticipant(idx)} className="text-slate-500 hover:text-rose-400 p-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={handleGenerateDraw}
+                disabled={setupParticipants.length < 3 || isSaving}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
+                <span>{isSaving ? 'Guardant a Supabase...' : 'Generar Sorteig i Desar al Núvol!'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'results' && drawData && (
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Check className="w-5 h-5 text-emerald-400" />
+                  <span>Sorteig "{drawData.name}" Actiu!</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Comparteix aquest enllaç web amb el nom integrat:</p>
+              </div>
+              <button
+                onClick={copyMasterLink}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2"
+              >
+                {copiedMasterLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedMasterLink ? 'Copiat!' : 'Copiar Enllaç del Sorteig'}</span>
+              </button>
+            </div>
+
+            <div className="bg-amber-950/20 border border-amber-500/30 p-4 rounded-2xl space-y-2">
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
+                <ShieldAlert className="w-4 h-4" />
+                <span>Enllaç d'Emergència de l'Organitzador</span>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={getEmergencyUrl()}
+                  className="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-[11px] text-amber-300 font-mono"
+                />
+                <button
+                  onClick={copyEmergencyLink}
+                  className="bg-amber-600 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs whitespace-nowrap"
+                >
+                  {copiedEmergencyLink ? 'Desat!' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase">
+                    <th className="py-3 px-4">Participant</th>
+                    <th className="py-3 px-4">Codi PIN</th>
+                    <th className="py-3 px-4">Regala a:</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {dbParticipants.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-3 px-4 font-bold text-white">{item.name}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-amber-400 bg-amber-950/50 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold">
+                          {item.pin}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-emerald-400 font-semibold">🎁 {item.recipient_name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
