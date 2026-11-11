@@ -14,7 +14,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function App() {
   // Database State
-  const [drawData, setDrawData] = useState(null); // Row from 'draws' table (slug: text, budget: text, etc.)
+  const [drawData, setDrawData] = useState(null); // Row from 'draws' table
   const [dbParticipants, setDbParticipants] = useState([]); // Rows from 'participants' table
   const [recipientWishlist, setRecipientWishlist] = useState([]); // Rows from 'wishlist_items'
   const [myWishlist, setMyWishlist] = useState([]); // Rows from 'wishlist_items'
@@ -61,7 +61,7 @@ export default function App() {
   const loadDrawBySlug = async (slug) => {
     setIsLoading(true);
     try {
-      // 1. Fetch draw config by slug field
+      // 1. Fetch draw config by slug field[cite: 1]
       const { data: draw, error } = await supabase
         .from('draws')
         .select('*')
@@ -88,7 +88,7 @@ export default function App() {
         const emergencyParam = params.get('admin');
         if (emergencyParam && draw.emergency_token && emergencyParam === draw.emergency_token) {
           setMode('admin_panel');
-          setAdminTab('results');
+          setAdminTab(parts && parts.length > 0 ? 'results' : 'setup');
         }
       } else {
         setDrawError("No s'ha trobat cap sorteig amb aquest identificador.");
@@ -119,7 +119,50 @@ export default function App() {
     }
   };
 
-  // --- ADMIN SETUP HANDLERS ---
+  // --- STEP 1: CREATE DRAW ONLY ("Comença") ---
+  const handleCreateDraw = async (e) => {
+    e?.preventDefault();
+    const cleanSlug = drawSlugInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!cleanSlug) {
+      setDrawError('El slug del sorteig no pot estar buit.');
+      return;
+    }
+
+    setDrawError('');
+    setIsSaving(true);
+
+    const emergencyToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    const newDrawRecord = {
+      slug: cleanSlug,
+      admin_pin: adminPinInput.trim() || '1234',
+      emergency_token: emergencyToken,
+      budget: budget || '20€',
+      event_date: eventDate || ''
+    };
+
+    try {
+      // 1. Insert row into 'draws' table first
+      const { data: insertedDraw, error: drawErr } = await supabase
+        .from('draws')
+        .insert(newDrawRecord)
+        .select()
+        .single();
+
+      if (drawErr) throw drawErr;
+
+      setDrawData(insertedDraw);
+      window.history.pushState({}, '', `?draw=${cleanSlug}`);
+      setAdminTab('setup');
+    } catch (err) {
+      console.error(err);
+      setDrawError('Error creant el sorteig a Supabase. Comprova que el slug no estigui duplicat.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- PARTICIPANT SETUP HANDLERS (Before draw is generated) ---
   const handleAddParticipantSetup = (e) => {
     e?.preventDefault();
     const trimmed = nameInput.trim();
@@ -162,17 +205,13 @@ export default function App() {
     setSetupParticipants(updated);
   };
 
-  // --- GENERATE NEW DRAW ---
-  const handleGenerateDraw = async () => {
+  // --- STEP 2: GENERATE DRAW ASSIGNMENTS ("Generar Sorteig") ---
+  const handleGenerateDrawAssignments = async () => {
     if (setupParticipants.length < 3) {
       setDrawError('Es necessiten almenys 3 participants per fer el sorteig!');
       return;
     }
-    const cleanSlug = drawSlugInput.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!cleanSlug) {
-      setDrawError('El slug del sorteig no pot estar buit.');
-      return;
-    }
+    if (!drawData) return;
 
     setDrawError('');
     setIsSaving(true);
@@ -197,29 +236,10 @@ export default function App() {
       return;
     }
 
-    const emergencyToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    const newDrawRecord = {
-      slug: cleanSlug,
-      admin_pin: adminPinInput.trim() || '1234',
-      emergency_token: emergencyToken,
-      budget: budget || '20€',
-      event_date: eventDate || ''
-    };
-
     try {
-      // 1. Insert Draw record into 'draws'
-      const { data: insertedDraw, error: drawErr } = await supabase
-        .from('draws')
-        .insert(newDrawRecord)
-        .select()
-        .single();
-
-      if (drawErr) throw drawErr;
-
-      // 2. Insert Participant records using draw_slug (text)
+      // Insert Participant records using draw_slug (text) linking to the existing draw
       const participantRows = givers.map((giver, idx) => ({
-        draw_slug: cleanSlug,
+        draw_slug: drawData.slug,
         name: giver.name,
         pin: giver.pin,
         recipient_name: receivers[idx].name
@@ -232,20 +252,17 @@ export default function App() {
 
       if (partErr) throw partErr;
 
-      setDrawData(insertedDraw);
       setDbParticipants(insertedParts || []);
-      
-      window.history.pushState({}, '', `?draw=${cleanSlug}`);
       setAdminTab('results');
     } catch (err) {
       console.error(err);
-      setDrawError('Error guardant a Supabase. Comprova que el slug no estigui duplicat.');
+      setDrawError('Error guardant els participants a Supabase.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // --- UPDATE DRAW SETTINGS (Organizer Menu) ---
+  // --- UPDATE DRAW SETTINGS ---
   const handleUpdateDrawSettings = async (e) => {
     e?.preventDefault();
     if (!drawData) return;
@@ -308,7 +325,6 @@ export default function App() {
     }
 
     try {
-      // Update each participant's recipient_name in Supabase
       for (let i = 0; i < givers.length; i++) {
         const participantObj = dbParticipants.find(p => p.name === givers[i].name);
         if (participantObj) {
@@ -319,7 +335,6 @@ export default function App() {
         }
       }
 
-      // Reload participants
       const { data: refreshedParts } = await supabase
         .from('participants')
         .select('*')
@@ -418,7 +433,7 @@ export default function App() {
 
     if (input === drawData.admin_pin) {
       setMode('admin_panel');
-      setAdminTab('results');
+      setAdminTab(dbParticipants.length > 0 ? 'results' : 'setup');
       setLoginInput('');
       return;
     }
@@ -781,7 +796,11 @@ export default function App() {
         <div className="flex border-b border-[#294A38] gap-4">
           {!drawData ? (
             <button className="pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-[#5BC58A]">
-              1. Crear Nou Sorteig ({setupParticipants.length} participants)
+              Pas 1: Crear Sorteig
+            </button>
+          ) : dbParticipants.length === 0 ? (
+            <button className="pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-[#5BC58A]">
+              Pas 2: Afegir Participants i Generar Sorteig ({setupParticipants.length})
             </button>
           ) : (
             <>
@@ -805,62 +824,80 @@ export default function App() {
           )}
         </div>
 
-        {/* --- CREATION WIZARD (When no drawData loaded) ---
-            Step 1: Choose slug, event_date, budget -> generates default admin_pin (1234) & emergency_token */}
+        {/* --- STEP 1: CREATE DRAW ONLY ("Comença") --- */}
         {!drawData && (
+          <div className="max-w-xl mx-auto bg-[#102B20] border border-[#294A38] rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center p-3 bg-[#123D29] border border-[#4BAE72]/40 rounded-2xl text-[#5BC58A] mb-1">
+                <Settings className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-[#FFF9EC]">Configura el teu Sorteig</h2>
+              <p className="text-xs text-[#B6BDAF]">
+                Primer defineix els detalls bàsics. Això registrarà el sorteig a Supabase i generarà el teu PIN d'organitzador (<code>1234</code> per defecte) i el testimoni d'emergència.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateDraw} className="space-y-4">
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">Slug (Identificador URL únic)</label>
+                <input
+                  type="text"
+                  value={drawSlugInput}
+                  onChange={(e) => setDrawSlugInput(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#5BC58A] font-mono"
+                  placeholder="familia-2026"
+                />
+                <p className="text-[10px] text-[#87988A] mt-1">Aquest serà l'ID immutable a l'enllaç web.</p>
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">Data de l'Esdeveniment</label>
+                <input
+                  type="text"
+                  placeholder="24 de Desembre"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#FFF9EC]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">Presupost</label>
+                <input
+                  type="text"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#FFF9EC]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">PIN d'Organitzador</label>
+                <input
+                  type="text"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#E9BD65] font-mono font-bold"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] hover:from-[#218C55] hover:to-[#AC3544] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-2xl text-sm flex items-center justify-center gap-2 mt-2 shadow-lg transition"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#F2D48B]" />}
+                <span>{isSaving ? 'Creant Sorteig...' : 'Comença'}</span>
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* --- STEP 2: ADD PARTICIPANTS & "Generar Sorteig" --- */}
+        {drawData && dbParticipants.length === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1 space-y-6">
               <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-5 space-y-4">
                 <h3 className="font-bold text-[#FFF9EC] text-sm flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-[#5BC58A]" />
-                  <span>1. Detalls Inicials</span>
-                </h3>
-                <div>
-                  <label className="block text-[11px] text-[#B6BDAF] mb-1">Slug (Identificador URL únic)</label>
-                  <input
-                    type="text"
-                    value={drawSlugInput}
-                    onChange={(e) => setDrawSlugInput(e.target.value)}
-                    className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3 py-2 text-xs text-[#5BC58A] font-mono"
-                    placeholder="familia-2026"
-                  />
-                  <p className="text-[10px] text-[#87988A] mt-1">Aquest serà l'ID immutable al link web.</p>
-                </div>
-                <div>
-                  <label className="block text-[11px] text-[#B6BDAF] mb-1">Data de l'Esdeveniment</label>
-                  <input
-                    type="text"
-                    placeholder="24 de Desembre"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3 py-2 text-xs text-[#FFF9EC]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-[#B6BDAF] mb-1">Presupost</label>
-                  <input
-                    type="text"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3 py-2 text-xs text-[#FFF9EC]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-[#B6BDAF] mb-1">PIN d'Organitzador</label>
-                  <input
-                    type="text"
-                    value={adminPinInput}
-                    onChange={(e) => setAdminPinInput(e.target.value)}
-                    className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3 py-2 text-xs text-[#E9BD65] font-mono font-bold"
-                  />
-                  <p className="text-[10px] text-[#87988A] mt-1">Per defecte 1234 per comoditat.</p>
-                </div>
-              </div>
-
-              <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-5 space-y-4">
-                <h3 className="font-bold text-[#FFF9EC] text-sm flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-[#5BC58A]" />
-                  <span>2. Afegir Participants</span>
+                  <span>Afegir Participant</span>
                 </h3>
 
                 {!showBulkInput ? (
@@ -907,17 +944,24 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-5 space-y-2 text-xs text-[#B6BDAF]">
+                <span className="font-bold text-[#FFF9EC] block mb-1">Sorteig Creat:</span>
+                <p>Slug: <strong className="text-[#5BC58A]">{drawData.slug}</strong></p>
+                <p>Pressupost: <strong className="text-[#E9BD65]">{drawData.budget}</strong></p>
+                {drawData.event_date && <p>Data: <strong className="text-[#FFF9EC]">{drawData.event_date}</strong></p>}
+              </div>
             </div>
 
             <div className="md:col-span-2 bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-[#294A38] pb-3">
-                <h3 className="font-bold text-[#FFF9EC] text-base">Llista de Participants Inials</h3>
+                <h3 className="font-bold text-[#FFF9EC] text-base">Participants Afegits</h3>
                 <span className="text-xs text-[#5BC58A]">{setupParticipants.length} persones</span>
               </div>
 
               {setupParticipants.length === 0 ? (
                 <div className="py-10 text-center text-[#87988A] text-xs border border-dashed border-[#294A38] rounded-2xl">
-                  Afegeix almenys 3 participants per continuar.
+                  Afegeix almenys 3 participants per poder fer el sorteig.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -941,19 +985,19 @@ export default function App() {
               )}
 
               <button
-                onClick={handleGenerateDraw}
+                onClick={handleGenerateDrawAssignments}
                 disabled={setupParticipants.length < 3 || isSaving}
                 className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-2xl text-sm flex items-center justify-center gap-2 mt-4"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#F2D48B]" />}
-                <span>{isSaving ? 'Generant Sorteig al Núvol...' : 'Generar Sorteig i Crear Taules!'}</span>
+                <span>{isSaving ? 'Guardant Participants...' : 'Generar Sorteig'}</span>
               </button>
             </div>
           </div>
         )}
 
         {/* --- ORGANIZER MENU: RESULTS & ASSIGNMENTS --- */}
-        {drawData && adminTab === 'results' && (
+        {drawData && dbParticipants.length > 0 && adminTab === 'results' && (
           <div className="space-y-6">
             <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#294A38] pb-4">
@@ -1062,11 +1106,11 @@ export default function App() {
         )}
 
         {/* --- ORGANIZER MENU: MODIFY DRAW SETTINGS (Except Slug) --- */}
-        {drawData && adminTab === 'settings' && (
+        {drawData && dbParticipants.length > 0 && adminTab === 'settings' && (
           <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-6">
             <div>
               <h3 className="text-lg font-bold text-[#FFF9EC]">Modificar Configuració del Sorteig</h3>
-              <p className="text-xs text-[#B6BDAF] mt-1">Pots editar el pressupost, la data i el PIN d'organitzador.</p>
+              <p className="text-xs text-[#B6BDAF] mt-1">Pots editar el pressupost, la data i el PIN d'organitzador (el slug no es pot modificar).</p>
             </div>
 
             <form onSubmit={handleUpdateDrawSettings} className="space-y-4 max-w-lg">
