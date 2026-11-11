@@ -849,7 +849,7 @@ export default function App() {
                     <tr key={item.id}>
                       <td className="py-3 px-4 font-bold text-[#FFF9EC]">{item.name}</td>
                       <td className="py-3 px-4">
-                        <span className="font-mono text-[#E9BD65] bg-[#4A3519]/50 border border-[#D6AA52]/40 px-2.5 py-1 rounded-lg font-bold">
+                        <span className="font-mono text-[#E9BD65]  bg-[#4A3519]/50 border border-[#D6AA52]/40 px-2.5 py-1 rounded-lg font-bold">
                           {item.pin}
                         </span>
                       </td>
