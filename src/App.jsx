@@ -14,12 +14,12 @@ import {
   KeyRound,
   ShieldCheck,
   AlertCircle,
-  Share2,
   Calendar,
   Heart,
   Plus,
   ArrowRight,
-  LogOut
+  LogOut,
+  ShieldAlert
 } from 'lucide-react';
 
 // --- UTILITY FUNCTIONS FOR BASE64 URL SAFE ENCODING ---
@@ -47,59 +47,68 @@ const decodeData = (str) => {
   }
 };
 
-// Helper to generate a random 4-digit PIN string
-const generatePin = () => {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-};
-
 export default function App() {
   // Global App State (decoded from URL hash if present)
-  const [drawPayload, setDrawPayload] = useState(null); // { assignments: [{ giver, pin, recipient }], budget, date }
-  
-  // Navigation State
-  const [mode, setMode] = useState('participant'); // 'participant' | 'admin'
+  const [drawPayload, setDrawPayload] = useState(null); 
+  // drawPayload contains: { assignments: [{ giver, pin, recipient }], wishlists: { [name]: [items] }, adminPin, emergencyToken, budget, date }
+
+  // Navigation / Login State
+  const [mode, setMode] = useState('login'); // 'login' | 'participant_view' | 'admin_panel'
   const [adminTab, setAdminTab] = useState('setup'); // 'setup' | 'results'
 
-  // Admin Form State
+  // Login Form Input State
+  const [loginInput, setLoginInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Admin Setup State
   const [nameInput, setNameInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [showBulkInput, setShowBulkInput] = useState(false);
   const [participants, setParticipants] = useState([]); // [{ name, pin }]
+  const [adminPinInput, setAdminPinInput] = useState('1234');
   const [budget, setBudget] = useState('20€');
   const [eventDate, setEventDate] = useState('');
   const [drawError, setDrawError] = useState('');
   const [copiedMasterLink, setCopiedMasterLink] = useState(false);
+  const [copiedEmergencyLink, setCopiedEmergencyLink] = useState(false);
 
-  // Participant Login & Reveal State
-  const [enteredPin, setEnteredPin] = useState('');
-  const [pinError, setPinError] = useState('');
+  // Participant Reveal State
   const [currentGiver, setCurrentGiver] = useState(null); // Logged in participant object
   const [isRevealed, setIsRevealed] = useState(false);
 
-  // Participant Wishlist State
-  const [myWishlist, setMyWishlist] = useState([]);
+  // Participant Wishlist Input State
   const [newWishItem, setNewWishItem] = useState('');
 
-  // Listen for Hash Changes (When loading or sharing master URL)
+  // Listen for Hash Changes & Emergency URL Param on Load
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleUrlState = () => {
       const hash = window.location.hash;
+      let decodedPayload = null;
+
       if (hash && hash.startsWith('#data=')) {
         const encoded = hash.replace('#data=', '');
-        const decoded = decodeData(encoded);
-        if (decoded && decoded.assignments && Array.isArray(decoded.assignments)) {
-          setDrawPayload(decoded);
-          setMode('participant');
+        decodedPayload = decodeData(encoded);
+        if (decodedPayload && decodedPayload.assignments) {
+          setDrawPayload(decodedPayload);
         }
+      }
+
+      // Check for Emergency Admin Query Param (?admin=emergency)
+      const params = new URLSearchParams(window.location.search);
+      const emergencyParam = params.get('admin');
+
+      if (emergencyParam && decodedPayload && decodedPayload.emergencyToken && emergencyParam === decodedPayload.emergencyToken) {
+        setMode('admin_panel');
+        setAdminTab('results');
       }
     };
 
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    handleUrlState();
+    window.addEventListener('hashchange', handleUrlState);
+    return () => window.removeEventListener('hashchange', handleUrlState);
   }, []);
 
-  // --- ADMIN HANDLERS ---
+  // --- ADMIN SETUP HANDLERS ---
   const handleAddParticipant = (e) => {
     e?.preventDefault();
     const trimmed = nameInput.trim();
@@ -108,7 +117,8 @@ export default function App() {
       setDrawError(`El nom "${trimmed}" ja està a la llista.`);
       return;
     }
-    setParticipants([...participants, { name: trimmed, pin: generatePin() }]);
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    setParticipants([...participants, { name: trimmed, pin }]);
     setNameInput('');
     setDrawError('');
   };
@@ -124,7 +134,8 @@ export default function App() {
     
     names.forEach(n => {
       if (!existingNames.includes(n.toLowerCase())) {
-        newItems.push({ name: n, pin: generatePin() });
+        const pin = Math.floor(1000 + Math.random() * 9000).toString();
+        newItems.push({ name: n, pin });
         existingNames.push(n.toLowerCase());
       }
     });
@@ -141,7 +152,7 @@ export default function App() {
 
   const handleRegeneratePin = (index) => {
     const updated = [...participants];
-    updated[index].pin = generatePin();
+    updated[index].pin = Math.floor(1000 + Math.random() * 9000).toString();
     setParticipants(updated);
   };
 
@@ -157,7 +168,6 @@ export default function App() {
     let valid = false;
     let attempts = 0;
 
-    // Shuffle until no participant receives themselves
     while (!valid && attempts < 500) {
       attempts++;
       for (let i = receivers.length - 1; i > 0; i--) {
@@ -178,19 +188,37 @@ export default function App() {
       recipient: receivers[idx].name
     }));
 
+    // Generate emergency secure alphanumeric token for organizer recovery
+    const emergencyToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+    const initialWishlists = {};
+    participants.forEach(p => {
+      initialWishlists[p.name] = [];
+    });
+
     const payload = {
       assignments,
+      wishlists: initialWishlists,
+      adminPin: adminPinInput.trim() || '1234',
+      emergencyToken,
       budget: budget || '20€',
       date: eventDate || ''
     };
 
     setDrawPayload(payload);
     
-    // Automatically update URL hash with newly drawn master payload
     const encoded = encodeData(payload);
     window.location.hash = `data=${encoded}`;
     
     setAdminTab('results');
+    setMode('admin_panel');
+  };
+
+  // Sync payload updates to URL hash
+  const updatePayloadState = (newPayload) => {
+    setDrawPayload(newPayload);
+    const encoded = encodeData(newPayload);
+    window.location.hash = `data=${encoded}`;
   };
 
   const getMasterUrl = () => {
@@ -200,73 +228,210 @@ export default function App() {
     return `${baseUrl}#data=${encoded}`;
   };
 
+  const getEmergencyUrl = () => {
+    if (!drawPayload || !drawPayload.emergencyToken) return '';
+    const baseUrl = window.location.origin + window.location.pathname;
+    const encoded = encodeData(drawPayload);
+    return `${baseUrl}?admin=${drawPayload.emergencyToken}#data=${encoded}`;
+  };
+
   const copyMasterLink = () => {
-    const url = getMasterUrl();
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(getMasterUrl());
     setCopiedMasterLink(true);
     setTimeout(() => setCopiedMasterLink(false), 2500);
   };
 
-  // --- PARTICIPANT PIN VERIFICATION ---
-  const handlePinSubmit = (e) => {
+  const copyEmergencyLink = () => {
+    navigator.clipboard.writeText(getEmergencyUrl());
+    setCopiedEmergencyLink(true);
+    setTimeout(() => setCopiedEmergencyLink(false), 2500);
+  };
+
+  // --- LOGIN & AUTHENTICATION HANDLER ---
+  const handleLoginSubmit = (e) => {
     e?.preventDefault();
-    setPinError('');
+    setLoginError('');
+
+    const input = loginInput.trim();
+    if (!input) return;
 
     if (!drawPayload || !drawPayload.assignments) {
-      setPinError('Encara no hi ha cap sorteig actiu. Demana l\'enllaç a l\'organitzador.');
+      setLoginError("Encara no s'ha configurat cap sorteig. Demana l'enllaç a l'organitzador.");
       return;
     }
 
-    const match = drawPayload.assignments.find(a => a.pin === enteredPin.trim());
+    // 1. Check if input matches Admin PIN
+    if (input === drawPayload.adminPin) {
+      setMode('admin_panel');
+      setAdminTab('results');
+      setLoginInput('');
+      return;
+    }
+
+    // 2. Check if input matches a Participant 4-digit PIN
+    const match = drawPayload.assignments.find(a => a.pin === input);
     if (match) {
       setCurrentGiver(match);
+      setMode('participant_view');
       setIsRevealed(false);
-
-      // Load participant wishlist from local storage if existing
-      const saved = localStorage.getItem(`amic_invisible_wishlist_${match.giver}`);
-      if (saved) {
-        try {
-          setMyWishlist(JSON.parse(saved));
-        } catch (err) {}
-      } else {
-        setMyWishlist([]);
-      }
+      setLoginInput('');
     } else {
-      setPinError('Codi secret incorrecte! Revisa els 4 dígits i torna-ho a provar.');
+      setLoginError('Codi PIN o contrasenya incorrectes. Torna-ho a provar.');
     }
   };
 
   const handleLogout = () => {
     setCurrentGiver(null);
-    setEnteredPin('');
+    setLoginInput('');
     setIsRevealed(false);
-    setPinError('');
+    setLoginError('');
+    setMode('login');
   };
 
-  // Wishlist addition
+  // --- WISHLIST HANDLERS (Stored inside shared payload) ---
   const handleAddWishItem = (e) => {
     e?.preventDefault();
-    if (!newWishItem.trim() || !currentGiver) return;
-    const updated = [...myWishlist, newWishItem.trim()];
-    setMyWishlist(updated);
+    if (!newWishItem.trim() || !currentGiver || !drawPayload) return;
+
+    const currentName = currentGiver.giver;
+    const currentList = drawPayload.wishlists?.[currentName] || [];
+    const updatedList = [...currentList, newWishItem.trim()];
+
+    const updatedWishlists = {
+      ...(drawPayload.wishlists || {}),
+      [currentName]: updatedList
+    };
+
+    const updatedPayload = {
+      ...drawPayload,
+      wishlists: updatedWishlists
+    };
+
+    updatePayloadState(updatedPayload);
     setNewWishItem('');
-    localStorage.setItem(`amic_invisible_wishlist_${currentGiver.giver}`, JSON.stringify(updated));
   };
 
   const handleRemoveWishItem = (index) => {
-    if (!currentGiver) return;
-    const updated = myWishlist.filter((_, i) => i !== index);
-    setMyWishlist(updated);
-    localStorage.setItem(`amic_invisible_wishlist_${currentGiver.giver}`, JSON.stringify(updated));
+    if (!currentGiver || !drawPayload) return;
+
+    const currentName = currentGiver.giver;
+    const currentList = drawPayload.wishlists?.[currentName] || [];
+    const updatedList = currentList.filter((_, i) => i !== index);
+
+    const updatedWishlists = {
+      ...(drawPayload.wishlists || {}),
+      [currentName]: updatedList
+    };
+
+    const updatedPayload = {
+      ...drawPayload,
+      wishlists: updatedWishlists
+    };
+
+    updatePayloadState(updatedPayload);
   };
 
+
   // =========================================================================
-  // RENDER PARTICIPANT VIEW (DEFAULT FAMÍLIA VIEW)
+  // 1. LOGIN SCREEN (SECURE GATEWAY FOR ALL USERS)
   // =========================================================================
-  if (mode === 'participant') {
+  if (mode === 'login') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white flex flex-col justify-between p-4">
+        <header className="max-w-md mx-auto w-full pt-8 text-center">
+          <div className="inline-flex items-center justify-center p-3 bg-emerald-950 border border-emerald-500/30 rounded-2xl mb-3 shadow-lg text-emerald-400">
+            <Gift className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Amic Invisible Secret</h1>
+          <p className="text-xs text-slate-400 mt-1">Accés segur amb codi PIN personalitzat</p>
+        </header>
+
+        <main className="max-w-md mx-auto w-full px-2">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+            {!drawPayload ? (
+              <div className="text-center space-y-4 py-4">
+                <div className="w-12 h-12 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Cap sorteig actiu en aquest enllaç</h2>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Si ets l'organitzador i vols configurar un nou sorteig des de zero, fes clic al botó inferior.
+                </p>
+                <button
+                  onClick={() => {
+                    setMode('admin_panel');
+                    setAdminTab('setup');
+                  }}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
+                >
+                  Configurar nou sorteig <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleLoginSubmit} className="space-y-5 text-center">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Identificació</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Introdueix el teu <span className="text-amber-400 font-semibold">PIN de 4 dígits</span> (o el PIN d'organitzador):
+                  </p>
+                </div>
+
+                <div>
+                  <input
+                    type="password"
+                    maxLength={10}
+                    autoFocus
+                    placeholder="••••"
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    className="w-full max-w-[200px] mx-auto text-center text-3xl tracking-[0.4em] font-mono bg-slate-950 border-2 border-slate-700 rounded-2xl py-3 text-amber-400 placeholder-slate-700 focus:outline-none focus:border-emerald-500 transition block shadow-inner"
+                  />
+                </div>
+
+                {loginError && (
+                  <p className="text-xs text-rose-400 font-medium bg-rose-950/50 border border-rose-500/30 p-2.5 rounded-xl">
+                    {loginError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!loginInput.trim()}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-bold rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2"
+                >
+                  <Unlock className="w-4 h-4" /> Entrar
+                </button>
+
+                {drawPayload.budget && (
+                  <div className="pt-3 border-t border-slate-800 text-xs text-slate-400 flex justify-center gap-4">
+                    <span>Presupost: <strong className="text-amber-400">{drawPayload.budget}</strong></span>
+                    {drawPayload.date && <span>Data: <strong className="text-emerald-400">{drawPayload.date}</strong></span>}
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+        </main>
+
+        <footer className="max-w-md mx-auto w-full text-center text-[11px] text-slate-600 pb-4">
+          Sistema protegit per a famílies i grups d'amics 🎄
+        </footer>
+      </div>
+    );
+  }
+
+
+  // =========================================================================
+  // 2. PARTICIPANT VIEW (LOCKED TO INDIVIDUAL ASSIGNMENT & WISHLIST)
+  // =========================================================================
+  if (mode === 'participant_view' && currentGiver) {
+    // Find recipient's live wishlist from drawPayload state
+    const recipientName = currentGiver.recipient;
+    const recipientWishlist = drawPayload.wishlists?.[recipientName] || [];
+    const myWishlist = drawPayload.wishlists?.[currentGiver.giver] || [];
+
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white pb-16">
-        {/* Header */}
         <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
           <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -277,213 +442,150 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => setMode('admin')}
+              onClick={handleLogout}
               className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5"
             >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              <span>Mode Organitzador</span>
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>Tancar Sessió</span>
             </button>
           </div>
         </header>
 
         <main className="max-w-xl mx-auto px-4 pt-8 space-y-6">
-          {!drawPayload ? (
-            /* No Draw Payload Active */
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
-              <div className="w-12 h-12 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-bold text-white">Cap sorteig carregat</h2>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-                Encara no s'ha carregat cap sorteig d'Amic Invisible en aquest enllaç. 
-                Demanali l'enllaç del sorteig a l'organitzador o entra al Mode Organitzador per crear-ne un de nou!
-              </p>
-              <button
-                onClick={() => setMode('admin')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition inline-flex items-center gap-2"
-              >
-                Crear nou sorteig ara <ArrowRight className="w-4 h-4" />
-              </button>
+          {/* Top Session Pill */}
+          <div className="flex items-center justify-between bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl">
+            <span className="text-xs text-slate-300">
+              Participant connectat: <strong className="text-emerald-400 font-semibold">{currentGiver.giver}</strong>
+            </span>
+          </div>
+
+          {/* Secret Target Reveal Card with Recipient Wishlist inside */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6 relative overflow-hidden">
+            <div className="inline-flex items-center space-x-2 bg-emerald-950 border border-emerald-500/30 text-emerald-300 text-xs font-semibold px-3 py-1 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Assignació Privada</span>
             </div>
-          ) : !currentGiver ? (
-            /* PIN ENTRY SCREEN */
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-6">
-              <div className="absolute -top-10 -right-10 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="w-14 h-14 bg-gradient-to-tr from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-950/60 text-white">
-                <Lock className="w-7 h-7" />
-              </div>
+            <h1 className="text-2xl font-extrabold text-white">
+              Hola, <span className="text-emerald-400">{currentGiver.giver}</span>! 🎁
+            </h1>
 
-              <div>
-                <h1 className="text-2xl font-extrabold text-white">Benvingut/da al Sorteig! 🎄</h1>
-                <p className="text-xs text-slate-400 mt-2">
-                  Introdueix el teu <span className="text-amber-400 font-semibold">Codi Secret de 4 dígits</span> per descobrir a qui has de regalar.
-                </p>
-              </div>
+            <div className="my-4">
+              {!isRevealed ? (
+                <button
+                  onClick={() => setIsRevealed(true)}
+                  className="w-full py-8 px-4 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-2xl shadow-xl border border-emerald-400/30 transition transform hover:-translate-y-0.5 active:translate-y-0 flex flex-col items-center justify-center space-y-2 group"
+                >
+                  <Eye className="w-8 h-8 text-emerald-200 group-hover:scale-110 transition-transform" />
+                  <span className="text-base sm:text-lg">Prem per descobrir a qui has de regalar</span>
+                  <span className="text-xs text-emerald-200/70 font-normal">PIN verificat amb èxit ✓</span>
+                </button>
+              ) : (
+                <div className="p-6 bg-slate-950 border-2 border-emerald-500/50 rounded-2xl shadow-inner space-y-4 animate-in fade-in zoom-in-95 duration-300 text-left">
+                  <div className="text-center">
+                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-1 font-medium">
+                      El teu amic invisible és:
+                    </div>
+                    <div className="text-3xl sm:text-4xl font-black text-amber-400 my-2 drop-shadow">
+                      🎁 {currentGiver.recipient} 🎁
+                    </div>
+                  </div>
 
-              {/* Event details pill */}
-              {(drawPayload.budget || drawPayload.date) && (
-                <div className="flex flex-wrap justify-center gap-2 text-xs">
-                  {drawPayload.budget && (
-                    <span className="bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg text-slate-300">
-                      Presupost: <strong className="text-amber-400">{drawPayload.budget}</strong>
-                    </span>
-                  )}
-                  {drawPayload.date && (
-                    <span className="bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg text-slate-300 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-emerald-400" /> {drawPayload.date}
-                    </span>
-                  )}
+                  {/* RECIPIENT SUGGESTIONS (WISHLIST) */}
+                  <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                    <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5 text-rose-400" />
+                      Suggeriments de regal de {currentGiver.recipient}:
+                    </h3>
+                    {recipientWishlist.length > 0 ? (
+                      <ul className="space-y-1.5 bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                        {recipientWishlist.map((item, idx) => (
+                          <li key={idx} className="text-xs text-slate-200 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic bg-slate-900/50 p-3 rounded-xl text-center">
+                        En/La {currentGiver.recipient} encara no ha afegit cap suggeriment de regal.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={() => setIsRevealed(false)}
+                      className="text-xs text-slate-400 hover:text-slate-200 inline-flex items-center gap-1 underline underline-offset-4"
+                    >
+                      <EyeOff className="w-3.5 h-3.5" /> Amagar per seguretat
+                    </button>
+                  </div>
                 </div>
               )}
-
-              {/* PIN Form */}
-              <form onSubmit={handlePinSubmit} className="space-y-4 max-w-xs mx-auto">
-                <div>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    placeholder="• • • •"
-                    value={enteredPin}
-                    onChange={(e) => setEnteredPin(e.target.value)}
-                    className="w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-950 border-2 border-slate-700 rounded-2xl py-3 text-emerald-400 placeholder-slate-700 focus:outline-none focus:border-emerald-500 transition"
-                  />
-                </div>
-
-                {pinError && (
-                  <p className="text-xs text-rose-400 font-medium bg-rose-950/50 border border-rose-500/30 p-2.5 rounded-xl">
-                    {pinError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={enteredPin.length !== 4}
-                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-bold rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2"
-                >
-                  <Unlock className="w-4 h-4" /> Entrar al meu regal
-                </button>
-              </form>
             </div>
-          ) : (
-            /* REVEALED CARD SCREEN FOR LOGGED IN PARTICIPANT */
-            <div className="space-y-6">
-              {/* Top Logout bar */}
-              <div className="flex items-center justify-between bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl">
-                <span className="text-xs text-slate-300">
-                  Sessió: <strong className="text-emerald-400 font-semibold">{currentGiver.giver}</strong>
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
-                >
-                  <LogOut className="w-3.5 h-3.5" /> Sortir / Tancar
-                </button>
-              </div>
+          </div>
 
-              {/* Secret Target Reveal Card */}
-              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6 relative overflow-hidden">
-                <div className="inline-flex items-center space-x-2 bg-emerald-950 border border-emerald-500/30 text-emerald-300 text-xs font-semibold px-3 py-1 rounded-full">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Assignació Privada</span>
-                </div>
+          {/* Participant's Own Wishlist Box */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Heart className="w-5 h-5 text-rose-400" />
+                <span>La meva llista de suggeriments</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Afegeix idees perquè la persona que et regala a tu ho tingui ben fàcil!
+              </p>
+            </div>
 
-                <h1 className="text-2xl font-extrabold text-white">
-                  Hola, <span className="text-emerald-400">{currentGiver.giver}</span>! 🎁
-                </h1>
+            <form onSubmit={handleAddWishItem} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Ex: Llibre, mitjons calents..."
+                value={newWishItem}
+                onChange={(e) => setNewWishItem(e.target.value)}
+                className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!newWishItem.trim()}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium px-4 py-2 rounded-xl text-xs transition flex items-center gap-1 shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Afegeix
+              </button>
+            </form>
 
-                <div className="my-6">
-                  {!isRevealed ? (
-                    <button
-                      onClick={() => setIsRevealed(true)}
-                      className="w-full py-8 px-4 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-2xl shadow-xl border border-emerald-400/30 transition transform hover:-translate-y-0.5 active:translate-y-0 flex flex-col items-center justify-center space-y-2 group"
-                    >
-                      <Eye className="w-8 h-8 text-emerald-200 group-hover:scale-110 transition-transform" />
-                      <span className="text-base sm:text-lg">Prem per veure a qui has de regalar</span>
-                      <span className="text-xs text-emerald-200/70 font-normal">Codi PIN comprovat correctament ✓</span>
-                    </button>
-                  ) : (
-                    <div className="p-6 bg-slate-950 border-2 border-emerald-500/50 rounded-2xl shadow-inner animate-in fade-in zoom-in-95 duration-300">
-                      <div className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-medium">
-                        El teu amic invisible és:
-                      </div>
-                      <div className="text-3xl sm:text-4xl font-black text-amber-400 my-2 drop-shadow">
-                        🎁 {currentGiver.recipient} 🎁
-                      </div>
-                      <button
-                        onClick={() => setIsRevealed(false)}
-                        className="mt-4 text-xs text-slate-400 hover:text-slate-200 inline-flex items-center gap-1 underline underline-offset-4"
-                      >
-                        <EyeOff className="w-3.5 h-3.5" /> Amagar per seguretat
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Wishlist Box */}
-              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Heart className="w-5 h-5 text-rose-400" />
-                    <span>La meva llista de suggeriments per al meu regal</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Afegeix idees perquè qui et regali a tu encerti de ple!
-                  </p>
-                </div>
-
-                <form onSubmit={handleAddWishItem} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Ex: Llibre, mitjons calents, llibreta..."
-                    value={newWishItem}
-                    onChange={(e) => setNewWishItem(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newWishItem.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium px-4 py-2 rounded-xl text-xs transition flex items-center gap-1 shrink-0"
+            {myWishlist.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                {myWishlist.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between bg-slate-950 border border-slate-800 px-3.5 py-2.5 rounded-xl text-xs text-slate-200"
                   >
-                    <Plus className="w-4 h-4" /> Afegeix
-                  </button>
-                </form>
-
-                {myWishlist.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {myWishlist.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between bg-slate-950 border border-slate-800 px-3.5 py-2.5 rounded-xl text-xs text-slate-200"
-                      >
-                        <span>{item}</span>
-                        <button
-                          onClick={() => handleRemoveWishItem(idx)}
-                          className="text-slate-600 hover:text-rose-400 transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                    <span>{item}</span>
+                    <button
+                      onClick={() => handleRemoveWishItem(idx)}
+                      className="text-slate-600 hover:text-rose-400 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                ) : (
-                  <p className="text-center py-4 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-                    Encara no has afegit cap suggeriment.
-                  </p>
-                )}
+                ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-center py-4 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+                Encara no has afegit cap suggeriment.
+              </p>
+            )}
+          </div>
         </main>
       </div>
     );
   }
 
+
   // =========================================================================
-  // RENDER ADMIN VIEW (ORGANITZADOR)
+  // 3. ADMIN PANEL (ORGANITZADOR VIEW - SECURE)
   // =========================================================================
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white pb-16">
@@ -495,15 +597,15 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-bold text-lg text-white tracking-tight">Panell d'Organitzador</h1>
-              <p className="text-xs text-slate-400">Gestió de Codis secrets PIN</p>
+              <p className="text-xs text-slate-400">Àrea restringida i segura</p>
             </div>
           </div>
 
           <button
-            onClick={() => setMode('participant')}
-            className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl transition font-medium flex items-center gap-1.5"
+            onClick={() => setMode('login')}
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl transition font-medium flex items-center gap-1.5 border border-slate-700"
           >
-            <Gift className="w-4 h-4" /> Vista Participants
+            <KeyRound className="w-4 h-4 text-amber-400" /> Sortir a Inici / Login
           </button>
         </div>
       </header>
@@ -521,7 +623,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ADMIN TAB SELECTOR */}
+        {/* ADMIN TABS */}
         <div className="flex border-b border-slate-800 gap-4">
           <button
             onClick={() => setAdminTab('setup')}
@@ -531,7 +633,7 @@ export default function App() {
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            1. Crear Participants i Codis PIN ({participants.length})
+            1. Crear Participants i PIN d'Admin ({participants.length})
           </button>
           {drawPayload && (
             <button
@@ -542,7 +644,7 @@ export default function App() {
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              2. Sorteig Actiu i Llista de PINs
+              2. Sorteig Actiu, Enllaços i Emergència
             </button>
           )}
         </div>
@@ -554,16 +656,16 @@ export default function App() {
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
                 <h3 className="font-bold text-white text-sm flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-emerald-400" />
-                  <span>Afegir Persona</span>
+                  <span>Afegir Participant</span>
                 </h3>
 
                 {!showBulkInput ? (
                   <form onSubmit={handleAddParticipant} className="space-y-3">
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Nom del participant</label>
+                      <label className="block text-xs text-slate-400 mb-1">Nom</label>
                       <input
                         type="text"
-                        placeholder="Ex: Marta, Pau, Avi..."
+                        placeholder="Ex: Marta, Pau..."
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -581,7 +683,7 @@ export default function App() {
                       onClick={() => setShowBulkInput(true)}
                       className="w-full text-xs text-slate-400 hover:text-slate-200 py-1 transition"
                     >
-                      O afegir molts noms de cop...
+                      O enganxar llista de cop...
                     </button>
                   </form>
                 ) : (
@@ -612,9 +714,19 @@ export default function App() {
                 )}
               </div>
 
-              {/* Event Meta */}
+              {/* Admin Config Meta */}
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
-                <h3 className="font-bold text-white text-xs">Detalls opcionals</h3>
+                <h3 className="font-bold text-white text-xs">Seguretat i Detalls</h3>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Contrasenya d'Organitzador</label>
+                  <input
+                    type="text"
+                    value={adminPinInput}
+                    onChange={(e) => setAdminPinInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-amber-400 font-mono font-bold"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Amb aquest codi podràs accedir al panell d'admin.</p>
+                </div>
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Presupost límit</label>
                   <input
@@ -625,7 +737,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Data de celebració</label>
+                  <label className="block text-[11px] text-slate-400 mb-1">Data</label>
                   <input
                     type="text"
                     placeholder="24 de Desembre"
@@ -637,11 +749,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* List and Generate */}
+            {/* Participants list & Generate */}
             <div className="md:col-span-2 space-y-6">
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="font-bold text-white text-base">Participants i Codis Secret PIN</h3>
+                  <h3 className="font-bold text-white text-base">Llistat de Participants i PINs</h3>
                   <span className="text-xs text-emerald-400">{participants.length} persones</span>
                 </div>
 
@@ -698,62 +810,93 @@ export default function App() {
           </div>
         )}
 
-        {/* RESULTS & PIN TABLE TAB */}
+        {/* RESULTS & EMERGENCY RECOVERY TAB */}
         {adminTab === 'results' && drawPayload && (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Check className="w-5 h-5 text-emerald-400" />
-                  <span>Sorteig actiu generat!</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Envia l'enllaç únic master a tota la família i entrega a cadascú el seu PIN de 4 dígits.
-                </p>
+          <div className="space-y-6">
+            {/* Links Box */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Check className="w-5 h-5 text-emerald-400" />
+                    <span>Sorteig actiu generat correctament!</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Comparteix l'enllaç general amb la família i dóna a cadascú el seu PIN de 4 dígits.
+                  </p>
+                </div>
+
+                <button
+                  onClick={copyMasterLink}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2"
+                >
+                  {copiedMasterLink ? (
+                    <>
+                      <Check className="w-4 h-4" /> Enllaç Master Copiat!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" /> Copiar Enllaç General
+                    </>
+                  )}
+                </button>
               </div>
 
-              <button
-                onClick={copyMasterLink}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2"
-              >
-                {copiedMasterLink ? (
-                  <>
-                    <Check className="w-4 h-4" /> Enllaç Master Copiat!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" /> Copiar Enllaç Únic per a Tots
-                  </>
-                )}
-              </button>
-            </div>
+              {/* EMERGENCY RECOVERY LINK SECTION */}
+              <div className="bg-amber-950/20 border border-amber-500/30 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>Enllaç d'Emergència de l'Organitzador (Guarda-te'l!)</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Si mai oblides la teva contrasenya d'administrador, guarda aquest enllaç privat. En clicar-lo, recuperaràs l'accés directe al panell d'organitzador a l'instant:
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value={getEmergencyUrl()}
+                    className="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-[11px] text-amber-300 font-mono select-all"
+                  />
+                  <button
+                    onClick={copyEmergencyLink}
+                    className="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs transition whitespace-nowrap"
+                  >
+                    {copiedEmergencyLink ? 'Desat!' : 'Copiar Emergència'}
+                  </button>
+                </div>
+              </div>
 
-            {/* Master Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Participant</th>
-                    <th className="py-3 px-4">Codi PIN Secret</th>
-                    <th className="py-3 px-4">Assignat a (Només visible per Admin)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {drawPayload.assignments.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-950/50">
-                      <td className="py-3 px-4 font-bold text-white">{item.giver}</td>
-                      <td className="py-3 px-4">
-                        <span className="font-mono text-amber-400 bg-amber-950/50 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold">
-                          {item.pin}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-500 italic">
-                        {item.recipient}
-                      </td>
+              {/* Assignments Table (Admin view only) */}
+              <div className="overflow-x-auto pt-2">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                  Assignacions Secretes (Només visible per a tu)
+                </h4>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Participant</th>
+                      <th className="py-3 px-4">Codi PIN Secret</th>
+                      <th className="py-3 px-4">Regala a:</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {drawPayload.assignments.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-950/50">
+                        <td className="py-3 px-4 font-bold text-white">{item.giver}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-mono text-amber-400 bg-amber-950/50 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold">
+                            {item.pin}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-emerald-400 font-semibold">
+                          🎁 {item.recipient}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
