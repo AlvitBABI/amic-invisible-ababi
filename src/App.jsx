@@ -119,6 +119,122 @@ export default function App() {
     }
   };
 
+  // --- STRICT PAIRING ALGORITHM (No Mutual Gifting & No Self Gifting) ---
+  const generateValidAssignments = (participantsList) => {
+    const givers = [...participantsList];
+    let receivers = [...participantsList];
+    let valid = false;
+    let attempts = 0;
+
+    while (!valid && attempts < 1000) {
+      attempts++;
+      // Shuffle receivers
+      for (let i = receivers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
+      }
+
+      // Check conditions:
+      // 1. No one gives to themselves (giver.name !== receiver.name)
+      // 2. No mutual gifting: if A gives to B, then B MUST NOT give to A
+      valid = givers.every((giver, idx) => {
+        const receiver = receivers[idx];
+        if (giver.name === receiver.name) return false;
+
+        // Find what receiver is giving to
+        const receiverTargetIdx = receivers.findIndex(r => r.name === receiver.name);
+        // Wait, check who receiver gives to: look up receiver's assigned index
+        // Let's map it cleanly:
+      });
+
+      if (valid) break;
+
+      // Cleaner validation loop:
+      let mapping = {};
+      givers.forEach((g, idx) => {
+        mapping[g.name] = receivers[idx].name;
+      });
+
+      let hasSelf = false;
+      let hasMutual = false;
+
+      for (let giverName in mapping) {
+        let receiverName = mapping[giverName];
+        if (giverName === receiverName) {
+          hasSelf = true;
+          break;
+        }
+        // Check mutual: does receiver give back to giver?
+        if (mapping[receiverName] === giverName) {
+          hasMutual = true;
+          break;
+        }
+      }
+
+      if (!hasSelf && !hasMutual) {
+        valid = true;
+        break;
+      }
+    }
+
+    if (!valid) {
+      return null;
+    }
+
+    // Return mapping array
+    return givers.map((giver) => {
+      const receiverIndex = receivers.findIndex(r => r.name === giver.name);
+      // Wait, receivers array aligns with givers indices where receivers[i] is received by givers[i]?
+      // Let's map properly: givers[i] gives to receivers[i]
+    });
+  };
+
+  // Helper function returning structured pairs { giver: name, receiver: name }
+  const computePairings = (participantsList) => {
+    const names = participantsList.map(p => p.name);
+    let attempts = 0;
+
+    while (attempts < 2000) {
+      attempts++;
+      // Shuffle a copy of names for receivers
+      let receivers = [...names];
+      for (let i = receivers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
+      }
+
+      let valid = true;
+      let map = {};
+      for (let i = 0; i < names.length; i++) {
+        map[names[i]] = receivers[i];
+      }
+
+      for (let i = 0; i < names.length; i++) {
+        const giver = names[i];
+        const receiver = map[giver];
+
+        // Rule 1: No self-gifting
+        if (giver === receiver) {
+          valid = false;
+          break;
+        }
+        // Rule 2: No mutual gifting (A -> B and B -> A)
+        if (map[receiver] === giver) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid) {
+        return names.map((name, idx) => ({
+          name: name,
+          recipient_name: receivers[idx]
+        }));
+      }
+    }
+    return null;
+  };
+
   // --- STEP 1: CREATE DRAW ONLY ("Comença") ---
   const handleCreateDraw = async (e) => {
     e?.preventDefault();
@@ -156,7 +272,7 @@ export default function App() {
       setAdminTab('setup');
     } catch (err) {
       console.error(err);
-      setDrawError('Error creant el sorteig a Supabase. Comprova que el slug no estigui duplicat.');
+      setDrawError("Error creant el sorteig a Supabase. Comprova que el slug no estigui duplicat.");
     } finally {
       setIsSaving(false);
     }
@@ -216,34 +332,24 @@ export default function App() {
     setDrawError('');
     setIsSaving(true);
 
-    const givers = [...setupParticipants];
-    let receivers = [...setupParticipants];
-    let valid = false;
-    let attempts = 0;
-
-    while (!valid && attempts < 500) {
-      attempts++;
-      for (let i = receivers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
-      }
-      valid = givers.every((giver, idx) => giver.name !== receivers[idx].name);
-    }
-
-    if (!valid) {
-      setDrawError('Error generant el sorteig. Torna-ho a intentar.');
+    const pairs = computePairings(setupParticipants);
+    if (!pairs) {
+      setDrawError('No sota cap combinació s’ha pogut evitar el regal mutu amb aquest nombre de participants. Prova d’afegir-ne un de nou!');
       setIsSaving(false);
       return;
     }
 
     try {
-      // Insert Participant records using draw_slug (text) linking to the existing draw
-      const participantRows = givers.map((giver, idx) => ({
-        draw_slug: drawData.slug,
-        name: giver.name,
-        pin: giver.pin,
-        recipient_name: receivers[idx].name
-      }));
+      // Map back pins to generated pairings
+      const participantRows = pairs.map((pair) => {
+        const originalObj = setupParticipants.find(p => p.name === pair.name);
+        return {
+          draw_slug: drawData.slug,
+          name: pair.name,
+          pin: originalObj.pin,
+          recipient_name: pair.recipient_name
+        };
+      });
 
       const { data: insertedParts, error: partErr } = await supabase
         .from('participants')
@@ -300,37 +406,23 @@ export default function App() {
       setDrawError('Es necessiten almenys 3 participants.');
       return;
     }
-    if (!confirm("Vols tornar a sortejar les assignacions per a tots els participants actuals?")) return;
+    if (!confirm("Vols tornar a sortejar les assignacions evitant regals mutus?")) return;
 
     setIsSaving(true);
-    const namesList = dbParticipants.map(p => ({ name: p.name, pin: p.pin }));
-    let givers = [...namesList];
-    let receivers = [...namesList];
-    let valid = false;
-    let attempts = 0;
-
-    while (!valid && attempts < 500) {
-      attempts++;
-      for (let i = receivers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
-      }
-      valid = givers.every((giver, idx) => giver.name !== receivers[idx].name);
-    }
-
-    if (!valid) {
-      setDrawError('Error en re-fer el sorteig.');
+    const pairs = computePairings(dbParticipants);
+    if (!pairs) {
+      setDrawError('No s’ha pogut generar un sorteig vàlid sense regals mutus. Torna-ho a provar.');
       setIsSaving(false);
       return;
     }
 
     try {
-      for (let i = 0; i < givers.length; i++) {
-        const participantObj = dbParticipants.find(p => p.name === givers[i].name);
+      for (let i = 0; i < pairs.length; i++) {
+        const participantObj = dbParticipants.find(p => p.name === pairs[i].name);
         if (participantObj) {
           await supabase
             .from('participants')
-            .update({ recipient_name: receivers[i].name })
+            .update({ recipient_name: pairs[i].recipient_name })
             .eq('id', participantObj.id);
         }
       }
@@ -342,7 +434,7 @@ export default function App() {
 
       if (refreshedParts) setDbParticipants(refreshedParts);
       setIsSaving(false);
-      alert("Sorteig actualitzat amb noves assignacions!");
+      alert("Sorteig actualitzat amb noves assignacions sense regals mutus!");
     } catch (err) {
       console.error(err);
       setDrawError("Error en actualitzar les assignacions.");
@@ -636,7 +728,7 @@ export default function App() {
           <div className="bg-[#102B20]/90 border border-[#294A38] rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6">
             <div className="inline-flex items-center space-x-2 bg-[#123D29] border border-[#4BAE72]/40 text-[#83D9A5] text-xs font-semibold px-3 py-1 rounded-full">
               <Sparkles className="w-3.5 h-3.5 text-[#E9BD65]" />
-              <span>Assignació Privada</span>
+              <span>Assignació Privada (Sense regals mutus)</span>
             </div>
 
             <h1 className="text-2xl font-extrabold text-[#FFF9EC]">
@@ -990,7 +1082,7 @@ export default function App() {
                 className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-2xl text-sm flex items-center justify-center gap-2 mt-4"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#F2D48B]" />}
-                <span>{isSaving ? 'Guardant Participants...' : 'Generar Sorteig'}</span>
+                <span>{isSaving ? 'Guardant Participants...' : 'Generar Sorteig (Sense regals mutus)'}</span>
               </button>
             </div>
           </div>
