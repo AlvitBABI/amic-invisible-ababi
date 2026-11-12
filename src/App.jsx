@@ -29,7 +29,7 @@ const translations = {
     budget: "Presupost:",
     date: "Data:",
     organizeAnother: "Vols organitzar un altre sorteig diferent?",
-    syncSupabase: "Sincronitzat amb Supabase 🎄",
+    syncAlvit: "Creat amb amor per l'Alvit. Bon Nadal 🎄",
     connectedParticipant: "Participant connectat:",
     privateAssignment: "Assignació Privada (Sense regals mutus)",
     hello: "Hola,",
@@ -52,7 +52,7 @@ const translations = {
     resultsAndParts: "Resultats i Participants",
     modifyDraw: "Modificar Sorteig",
     setupConfigTitle: "Configura el teu Sorteig",
-    setupConfigDesc: "Primer defineix els detalls bàsics. Això registrarà el sorteig a Supabase i generarà el teu PIN d'organitzador (1234 per defecte) i el testimoni d'emergència.",
+    setupConfigDesc: "Primer defineix els detalls bàsics. Això registrarà el sorteig i generarà el teu PIN d'organitzador (1234 per defecte) i el testimoni d'emergència.",
     slugLabel: "Slug (Identificador URL únic)",
     slugDesc: "Aquest serà l'ID immutable a l'enllaç web.",
     eventDateLabel: "Data de l'Esdeveniment",
@@ -92,7 +92,7 @@ const translations = {
     logout: "Tancar Sessió",
     errorNoDraw: "No s'ha trobat cap sorteig amb aquest identificador.",
     errorMin3: "Es necessiten almenys 3 participants per fer el sorteig!",
-    errorDuplicateSlug: "Error creant el sorteig a Supabase. Comprova que el slug no estigui duplicat.",
+    errorDuplicateSlug: "Error creant el sorteig. Comprova que el slug no estigui duplicat.",
     errorIncorrectPin: "Codi PIN o contrasenya incorrectes."
   },
   en: {
@@ -110,7 +110,7 @@ const translations = {
     budget: "Budget:",
     date: "Date:",
     organizeAnother: "Want to organize a different draw?",
-    syncSupabase: "Synced with Supabase 🎄",
+    syncAlvit: "Made with love by Alvit. Merry Christmas 🎄",
     connectedParticipant: "Connected participant:",
     privateAssignment: "Private Assignment (No mutual gifting)",
     hello: "Hello,",
@@ -133,7 +133,7 @@ const translations = {
     resultsAndParts: "Results & Participants",
     modifyDraw: "Modify Draw",
     setupConfigTitle: "Configure your Draw",
-    setupConfigDesc: "First define the basic details. This will register the draw in Supabase and generate your organizer PIN (1234 by default) and emergency token.",
+    setupConfigDesc: "First define the basic details. This will register the draw and generate your organizer PIN (1234 by default) and emergency token.",
     slugLabel: "Slug (Unique URL Identifier)",
     slugDesc: "This will be the immutable ID in the web link.",
     eventDateLabel: "Event Date",
@@ -173,7 +173,7 @@ const translations = {
     logout: "Log Out",
     errorNoDraw: "No draw was found with this identifier.",
     errorMin3: "At least 3 participants are required to run the draw!",
-    errorDuplicateSlug: "Error creating draw in Supabase. Check that the slug is not duplicated.",
+    errorDuplicateSlug: "Error creating draw. Check that the slug is not duplicated.",
     errorIncorrectPin: "Incorrect PIN code or password."
   }
 };
@@ -795,7 +795,7 @@ export default function App() {
         </main>
 
         <footer className="max-w-md mx-auto w-full text-center text-[11px] text-[#718475] pb-4">
-          {t.syncSupabase}
+          {t.syncAlvit}
         </footer>
       </div>
     );
