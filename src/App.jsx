@@ -42,6 +42,9 @@ export default function App() {
   const [copiedMasterLink, setCopiedMasterLink] = useState(false);
   const [copiedEmergencyLink, setCopiedEmergencyLink] = useState(false);
 
+  // Admin Panel Visibility State (Mapping participant ID -> boolean)
+  const [revealedAdminRecipients, setRevealedAdminRecipients] = useState({});
+
   // Participant View State
   const [currentGiver, setCurrentGiver] = useState(null);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -120,83 +123,12 @@ export default function App() {
   };
 
   // --- STRICT PAIRING ALGORITHM (No Mutual Gifting & No Self Gifting) ---
-  const generateValidAssignments = (participantsList) => {
-    const givers = [...participantsList];
-    let receivers = [...participantsList];
-    let valid = false;
-    let attempts = 0;
-
-    while (!valid && attempts < 1000) {
-      attempts++;
-      // Shuffle receivers
-      for (let i = receivers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
-      }
-
-      // Check conditions:
-      // 1. No one gives to themselves (giver.name !== receiver.name)
-      // 2. No mutual gifting: if A gives to B, then B MUST NOT give to A
-      valid = givers.every((giver, idx) => {
-        const receiver = receivers[idx];
-        if (giver.name === receiver.name) return false;
-
-        // Find what receiver is giving to
-        const receiverTargetIdx = receivers.findIndex(r => r.name === receiver.name);
-        // Wait, check who receiver gives to: look up receiver's assigned index
-        // Let's map it cleanly:
-      });
-
-      if (valid) break;
-
-      // Cleaner validation loop:
-      let mapping = {};
-      givers.forEach((g, idx) => {
-        mapping[g.name] = receivers[idx].name;
-      });
-
-      let hasSelf = false;
-      let hasMutual = false;
-
-      for (let giverName in mapping) {
-        let receiverName = mapping[giverName];
-        if (giverName === receiverName) {
-          hasSelf = true;
-          break;
-        }
-        // Check mutual: does receiver give back to giver?
-        if (mapping[receiverName] === giverName) {
-          hasMutual = true;
-          break;
-        }
-      }
-
-      if (!hasSelf && !hasMutual) {
-        valid = true;
-        break;
-      }
-    }
-
-    if (!valid) {
-      return null;
-    }
-
-    // Return mapping array
-    return givers.map((giver) => {
-      const receiverIndex = receivers.findIndex(r => r.name === giver.name);
-      // Wait, receivers array aligns with givers indices where receivers[i] is received by givers[i]?
-      // Let's map properly: givers[i] gives to receivers[i]
-    });
-  };
-
-  // Helper function returning structured pairs { giver: name, receiver: name }
   const computePairings = (participantsList) => {
     const names = participantsList.map(p => p.name);
     let attempts = 0;
 
     while (attempts < 2000) {
       attempts++;
-      // Shuffle a copy of names for receivers
       let receivers = [...names];
       for (let i = receivers.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -240,7 +172,7 @@ export default function App() {
     e?.preventDefault();
     const cleanSlug = drawSlugInput.trim().toLowerCase().replace(/\s+/g, '-');
     if (!cleanSlug) {
-      setDrawError('El slug del sorteig no pot estar buit.');
+      setDrawError("El slug del sorteig no pot estar buit.");
       return;
     }
 
@@ -258,7 +190,6 @@ export default function App() {
     };
 
     try {
-      // 1. Insert row into 'draws' table first
       const { data: insertedDraw, error: drawErr } = await supabase
         .from('draws')
         .insert(newDrawRecord)
@@ -278,7 +209,7 @@ export default function App() {
     }
   };
 
-  // --- PARTICIPANT SETUP HANDLERS (Before draw is generated) ---
+  // --- PARTICIPANT SETUP HANDLERS ---
   const handleAddParticipantSetup = (e) => {
     e?.preventDefault();
     const trimmed = nameInput.trim();
@@ -324,7 +255,7 @@ export default function App() {
   // --- STEP 2: GENERATE DRAW ASSIGNMENTS ("Generar Sorteig") ---
   const handleGenerateDrawAssignments = async () => {
     if (setupParticipants.length < 3) {
-      setDrawError('Es necessiten almenys 3 participants per fer el sorteig!');
+      setDrawError("Es necessiten almenys 3 participants per fer el sorteig!");
       return;
     }
     if (!drawData) return;
@@ -334,13 +265,12 @@ export default function App() {
 
     const pairs = computePairings(setupParticipants);
     if (!pairs) {
-      setDrawError('No sota cap combinació s’ha pogut evitar el regal mutu amb aquest nombre de participants. Prova d’afegir-ne un de nou!');
+      setDrawError("No sota cap combinació s’ha pogut evitar el regal mutu amb aquest nombre de participants. Prova d’afegir-ne un de nou!");
       setIsSaving(false);
       return;
     }
 
     try {
-      // Map back pins to generated pairings
       const participantRows = pairs.map((pair) => {
         const originalObj = setupParticipants.find(p => p.name === pair.name);
         return {
@@ -362,7 +292,7 @@ export default function App() {
       setAdminTab('results');
     } catch (err) {
       console.error(err);
-      setDrawError('Error guardant els participants a Supabase.');
+      setDrawError("Error guardant els participants a Supabase.");
     } finally {
       setIsSaving(false);
     }
@@ -403,7 +333,7 @@ export default function App() {
   // --- RE-RUN DRAW WITH EXISTING PARTICIPANTS ---
   const handleReRunDraw = async () => {
     if (dbParticipants.length < 3) {
-      setDrawError('Es necessiten almenys 3 participants.');
+      setDrawError("Es necessiten almenys 3 participants.");
       return;
     }
     if (!confirm("Vols tornar a sortejar les assignacions evitant regals mutus?")) return;
@@ -411,7 +341,7 @@ export default function App() {
     setIsSaving(true);
     const pairs = computePairings(dbParticipants);
     if (!pairs) {
-      setDrawError('No s’ha pogut generar un sorteig vàlid sense regals mutus. Torna-ho a provar.');
+      setDrawError("No s’ha pogut generar un sorteig vàlid sense regals mutus. Torna-ho a provar.");
       setIsSaving(false);
       return;
     }
@@ -491,6 +421,14 @@ export default function App() {
       console.error(err);
       setDrawError("Error eliminant participant.");
     }
+  };
+
+  // --- TOGGLE INDIVIDUAL RECIPIENT VISIBILITY IN ADMIN PANEL ---
+  const toggleAdminReveal = (id) => {
+    setRevealedAdminRecipients(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
 
   // --- URL HELPERS ---
@@ -612,7 +550,7 @@ export default function App() {
           <div className="inline-flex items-center justify-center p-3 bg-[#123D29] border border-[#4BAE72]/40 rounded-2xl mb-3 shadow-lg text-[#5BC58A]">
             <Gift className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-extrabold text-[#FFF9EC] tracking-tight">Amic Invisible Secret</h1>
+          <h1 className="text-2xl font-extrabold text-[#FFF9EC] tracking-tight">Amic Invisible</h1>
           <p className="text-xs text-[#B6BDAF] mt-1">
             {drawData ? `Sorteig actiu: "${drawData.slug}"` : 'Accés amb codi PIN'}
           </p>
@@ -690,7 +628,7 @@ export default function App() {
         </main>
 
         <footer className="max-w-md mx-auto w-full text-center text-[11px] text-[#718475] pb-4">
-          🎄 creat amb amor per l'Alvit 🎄
+          🎄 creat amb amor per l'Alvit. Bon Nadal 🎄
         </footer>
       </div>
     );
@@ -1170,25 +1108,41 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
-                      {dbParticipants.map((item) => (
-                        <tr key={item.id}>
-                          <td className="py-3 px-4 font-bold text-[#FFF9EC]">{item.name}</td>
-                          <td className="py-3 px-4">
-                            <span className="font-mono text-[#E9BD65] bg-[#4A3519]/50 border border-[#D6AA52]/40 px-2.5 py-1 rounded-lg font-bold">
-                              {item.pin}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-[#5BC58A] font-semibold">🎁 {item.recipient_name}</td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleDeleteParticipantActive(item.id)}
-                              className="text-[#718475] hover:text-[#E87575] p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {dbParticipants.map((item) => {
+                        const isRevealedForAdmin = revealedAdminRecipients[item.id];
+                        return (
+                          <tr key={item.id}>
+                            <td className="py-3 px-4 font-bold text-[#FFF9EC]">{item.name}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-mono text-[#E9BD65] bg-[#4A3519]/50 border border-[#D6AA52]/40 px-2.5 py-1 rounded-lg font-bold">
+                                {item.pin}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-semibold ${isRevealedForAdmin ? 'text-[#5BC58A]' : 'text-[#87988A] italic'}`}>
+                                  {isRevealedForAdmin ? `🎁 ${item.recipient_name}` : '••••••••'}
+                                </span>
+                                <button
+                                  onClick={() => toggleAdminReveal(item.id)}
+                                  className="text-[#B6BDAF] hover:text-[#FFF9EC] p-1 bg-[#1B3B2D] rounded-lg border border-[#365A45]"
+                                  title={isRevealedForAdmin ? "Amagar destinatari" : "Revelar destinatari"}
+                                >
+                                  {isRevealedForAdmin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => handleDeleteParticipantActive(item.id)}
+                                className="text-[#718475] hover:text-[#E87575] p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
