@@ -13,75 +13,1371 @@ const SUPABASE_ANON_KEY = 'sb_publishable__WbCTrsXTmcrpDurJx5mXQ_MaEE6v6u';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- TRANSLATIONS DICTIONARY ---
-const t = {
+const translations = {
   cat: {
-    activeDraw: "Sorteig actiu",
+    title: "Amic Invisible Secret",
+    activeDraw: "Sorteig actiu:",
     accessPin: "Accés amb codi PIN",
     noDrawSelected: "Cap sorteig seleccionat",
-    noDrawDesc: "Assegura't d'utilitzar l'enllaç correcte proporcionat per l'organitzador (amb ?draw=slug-del-sorteig) o crea un nou sorteig:",
-    createNewDraw: "Crear un nou Sorteig",
+    noDrawDesc: "Assegura't d'utilitzar l'enllaç correcte proporcionat per l'organitzador (amb",
+    orCreateNew: "o crea un nou sorteig:",
+    createNewDrawBtn: "Crear un nou Sorteig",
     identification: "Identificació",
-    enterPin: "Introdueix el teu PIN de 4 dígits:",
-    enterPinOrAdmin: "Introdueix el teu PIN de 4 dígits o PIN d'organitzador:",
-    enterButton: "Entrar",
-    budget: "Presupost",
-    date: "Data",
+    enterPin: "Introdueix el teu",
+    pinOrAdmin: "PIN de 4 dígits:",
+    unlockBtn: "Entrar",
+    budget: "Presupost:",
+    date: "Data:",
     organizeAnother: "Vols organitzar un altre sorteig diferent?",
     syncSupabase: "Sincronitzat amb Supabase 🎄",
-    loadingDraw: "Carregant dades del sorteig...",
-    secretSanta: "Amic Invisible",
-    logout: "Tancar Sessió",
     connectedParticipant: "Participant connectat:",
     privateAssignment: "Assignació Privada (Sense regals mutus)",
     hello: "Hola,",
-    clickToDiscover: "Prem per descobrir a qui has de regalar",
-    mySecretIs: "El teu amic invisible és:",
+    revealBtn: "Prem per descobrir a qui has de regalar",
+    myAssignmentIs: "El teu amic invisible és:",
+    hideBtn: "Amagar per seguretat",
     giftSuggestionsOf: "Suggeriments de regal de",
-    noSuggestionsYet: "Encara no ha afegit cap suggeriment de regal.",
-    hideForSafety: "Amagar per seguretat",
-    myWishlist: "La meva llista de suggeriments",
-    savedToCloud: "Es guarda al núvol instantàniament!",
-    wishPlaceholder: "Ex: Llibre, mitjons calents...",
-    add: "Afegeix",
-    noWishlistYet: "Encara no has afegit cap suggeriment.",
+    noSuggestions: "Encara no ha afegit cap suggeriment de regal.",
+    mySuggestions: "La meva llista de suggeriments",
+    cloudSaved: "Es guarda al núvol instantàniament!",
+    placeholderWish: "Ex: Llibre, mitjons calents...",
+    addBtn: "Afegeix",
+    noMySuggestions: "Encara no has afegit cap suggeriment.",
     organizerPanel: "Panell d'Organitzador",
     restrictedArea: "Àrea restringida",
     newDraw: "Nou Sorteig",
     login: "Login",
     step1Create: "Pas 1: Crear Sorteig",
-    step2Participants: "Pas 2: Afegir Participants i Generar Sorteig",
+    step2AddParts: "Pas 2: Afegir Participants i Generar Sorteig",
     resultsAndParts: "Resultats i Participants",
     modifyDraw: "Modificar Sorteig",
-    configYourDraw: "Configura el teu Sorteig",
-    configDesc: "Primer defineix els detalls bàsics. Això registrarà el sorteig a Supabase i generarà el teu PIN d'organitzador (1234 per defecte) i el testimoni d'emergència.",
+    setupConfigTitle: "Configura el teu Sorteig",
+    setupConfigDesc: "Primer defineix els detalls bàsics. Això registrarà el sorteig a Supabase i generarà el teu PIN d'organitzador (1234 per defecte) i el testimoni d'emergència.",
     slugLabel: "Slug (Identificador URL únic)",
     slugDesc: "Aquest serà l'ID immutable a l'enllaç web.",
     eventDateLabel: "Data de l'Esdeveniment",
     budgetLabel: "Presupost",
     adminPinLabel: "PIN d'Organitzador",
-    adminPinDefault: "Per defecte 1234 per comoditat.",
-    start: "Comença",
+    startBtn: "Comença",
     creatingDraw: "Creant Sorteig...",
     addParticipant: "Afegir Participant",
-    participantNamePlaceholder: "Nom del participant...",
+    placeholderName: "Nom del participant...",
     addParticipantBtn: "Afegir participant",
     pasteBulk: "O enganxar llista de cop...",
     addBulkBtn: "Afegir tots",
     cancel: "Cancel·lar",
     drawCreated: "Sorteig Creat:",
     addedParticipants: "Participants Afegits",
-    min3ParticipantsMsg: "Afegeix almenys 3 participants per poder fer el sorteig.",
+    min3Required: "Afegeix almenys 3 participants per poder fer el sorteig.",
+    generateDrawBtn: "Generar Sorteig (Sense regals mutus)",
     savingParticipants: "Guardant Participants...",
-    generateDrawNoMutual: "Generar Sorteig (Sense regals mutus)",
     shareLinkTitle: "Comparteix aquest enllaç web amb els participants:",
-    copyDrawLink: "Copiar Enllaç del Sorteig",
+    copyLinkBtn: "Copiar Enllaç del Sorteig",
     copied: "Copiat!",
     emergencyLinkTitle: "Enllaç d'Emergència de l'Organitzador",
-    save: "Desat!",
-    copy: "Copiar",
+    saveShort: "Desat!",
+    copyShort: "Copiar",
     manageParticipants: "Gestionar Participants",
-    rerunDraw: "Re-fer Sorteig",
-    addNewParticipantPlaceholder: "Afegir nou participant...",
-    actions: "Accions",
+    rerunDrawBtn: "Re-fer Sorteig",
+    placeholderNewPart: "Afegir nou participant...",
+    tableParticipant: "Participant",
+    tablePin: "Codi PIN",
+    tableRegala: "Regala a:",
+    tableActions: "Accions",
     modifyConfigTitle: "Modificar Configuració del Sorteig",
-    modifyConfigDesc: "Pots editar el
+    modifyConfigDesc: "Pots editar el pressupost, la data i el PIN d'organitzador (el slug no es pot modificar).",
+    slugImmutable: "Slug (Identificador únic - No modificable)",
+    saveChanges: "Guardar Canvis",
+    loading: "Carregant dades del sorteig...",
+    logout: "Tancar Sessió",
+    errorNoDraw: "No s'ha trobat cap sorteig amb aquest identificador.",
+    errorMin3: "Es necessiten almenys 3 participants per fer el sorteig!",
+    errorDuplicateSlug: "Error creant el sorteig a Supabase. Comprova que el slug no estigui duplicat.",
+    errorIncorrectPin: "Codi PIN o contrasenya incorrectes."
+  },
+  en: {
+    title: "Secret Santa",
+    activeDraw: "Active draw:",
+    accessPin: "Access with PIN code",
+    noDrawSelected: "No draw selected",
+    noDrawDesc: "Make sure to use the correct link provided by the organizer (with",
+    orCreateNew: "or create a new draw:",
+    createNewDrawBtn: "Create a new Draw",
+    identification: "Identification",
+    enterPin: "Enter your",
+    pinOrAdmin: "4-digit PIN:",
+    unlockBtn: "Enter",
+    budget: "Budget:",
+    date: "Date:",
+    organizeAnother: "Want to organize a different draw?",
+    syncSupabase: "Synced with Supabase 🎄",
+    connectedParticipant: "Connected participant:",
+    privateAssignment: "Private Assignment (No mutual gifting)",
+    hello: "Hello,",
+    revealBtn: "Click to reveal who you are gifting to",
+    myAssignmentIs: "Your secret santa recipient is:",
+    hideBtn: "Hide for safety",
+    giftSuggestionsOf: "Gift suggestions from",
+    noSuggestions: "Has not added any gift suggestions yet.",
+    mySuggestions: "My wishlist suggestions",
+    cloudSaved: "Saved to the cloud instantly!",
+    placeholderWish: "Ex: Book, warm socks...",
+    addBtn: "Add",
+    noMySuggestions: "You haven't added any suggestions yet.",
+    organizerPanel: "Organizer Panel",
+    restrictedArea: "Restricted area",
+    newDraw: "New Draw",
+    login: "Login",
+    step1Create: "Step 1: Create Draw",
+    step2AddParts: "Step 2: Add Participants & Generate Draw",
+    resultsAndParts: "Results & Participants",
+    modifyDraw: "Modify Draw",
+    setupConfigTitle: "Configure your Draw",
+    setupConfigDesc: "First define the basic details. This will register the draw in Supabase and generate your organizer PIN (1234 by default) and emergency token.",
+    slugLabel: "Slug (Unique URL Identifier)",
+    slugDesc: "This will be the immutable ID in the web link.",
+    eventDateLabel: "Event Date",
+    budgetLabel: "Budget",
+    adminPinLabel: "Organizer PIN",
+    startBtn: "Start",
+    creatingDraw: "Creating Draw...",
+    addParticipant: "Add Participant",
+    placeholderName: "Participant name...",
+    addParticipantBtn: "Add participant",
+    pasteBulk: "Or paste bulk list...",
+    addBulkBtn: "Add all",
+    cancel: "Cancel",
+    drawCreated: "Draw Created:",
+    addedParticipants: "Added Participants",
+    min3Required: "Add at least 3 participants to run the draw.",
+    generateDrawBtn: "Generate Draw (No mutual gifting)",
+    savingParticipants: "Saving Participants...",
+    shareLinkTitle: "Share this web link with participants:",
+    copyLinkBtn: "Copy Draw Link",
+    copied: "Copied!",
+    emergencyLinkTitle: "Organizer Emergency Link",
+    saveShort: "Saved!",
+    copyShort: "Copy",
+    manageParticipants: "Manage Participants",
+    rerunDrawBtn: "Re-run Draw",
+    placeholderNewPart: "Add new participant...",
+    tableParticipant: "Participant",
+    tablePin: "PIN Code",
+    tableRegala: "Gifts to:",
+    tableActions: "Actions",
+    modifyConfigTitle: "Modify Draw Configuration",
+    modifyConfigDesc: "You can edit the budget, date, and organizer PIN (slug cannot be modified).",
+    slugImmutable: "Slug (Unique identifier - Unmodifiable)",
+    saveChanges: "Save Changes",
+    loading: "Loading draw data...",
+    logout: "Log Out",
+    errorNoDraw: "No draw was found with this identifier.",
+    errorMin3: "At least 3 participants are required to run the draw!",
+    errorDuplicateSlug: "Error creating draw in Supabase. Check that the slug is not duplicated.",
+    errorIncorrectPin: "Incorrect PIN code or password."
+  }
+};
+
+export default function App() {
+  // Language State ('cat' or 'en')
+  const [lang, setLang] = useState('cat');
+  const t = translations[lang];
+
+  // Database State
+  const [drawData, setDrawData] = useState(null); 
+  const [dbParticipants, setDbParticipants] = useState([]); 
+  const [recipientWishlist, setRecipientWishlist] = useState([]); 
+  const [myWishlist, setMyWishlist] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Navigation / Login State
+  const [mode, setMode] = useState('login'); // 'login' | 'participant_view' | 'admin_panel'
+  const [adminTab, setAdminTab] = useState('setup'); // 'setup' | 'results' | 'settings'
+
+  // Login Form State
+  const [loginInput, setLoginInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Admin Setup & Edit State
+  const [drawSlugInput, setDrawSlugInput] = useState('familia-2026'); 
+  const [nameInput, setNameInput] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
+  const [showBulkInput, setShowBulkInput] = useState(false);
+  const [setupParticipants, setSetupParticipants] = useState([]); 
+  const [adminPinInput, setAdminPinInput] = useState('1234');
+  const [budget, setBudget] = useState('30€');
+  const [eventDate, setEventDate] = useState('');
+  const [drawError, setDrawError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [copiedMasterLink, setCopiedMasterLink] = useState(false);
+  const [copiedEmergencyLink, setCopiedEmergencyLink] = useState(false);
+
+  // Admin Panel Visibility State
+  const [revealedAdminRecipients, setRevealedAdminRecipients] = useState({});
+
+  // Participant View State
+  const [currentGiver, setCurrentGiver] = useState(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [newWishItem, setNewWishItem] = useState('');
+
+  // Load draw based on URL parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const drawSlug = params.get('draw');
+    if (drawSlug) {
+      loadDrawBySlug(drawSlug);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadDrawBySlug = async (slug) => {
+    setIsLoading(true);
+    try {
+      const { data: draw, error } = await supabase
+        .from('draws')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+
+      if (draw) {
+        setDrawData(draw);
+        setDrawSlugInput(draw.slug);
+        setAdminPinInput(draw.admin_pin || '1234');
+        setBudget(draw.budget || '');
+        setEventDate(draw.event_date || '');
+
+        const { data: parts } = await supabase
+          .from('participants')
+          .select('*')
+          .eq('draw_slug', draw.slug);
+
+        if (parts) setDbParticipants(parts);
+
+        const params = new URLSearchParams(window.location.search);
+        const emergencyParam = params.get('admin');
+        if (emergencyParam && draw.emergency_token && emergencyParam === draw.emergency_token) {
+          setMode('admin_panel');
+          setAdminTab(parts && parts.length > 0 ? 'results' : 'setup');
+        }
+      } else {
+        setDrawError(t.errorNoDraw);
+      }
+    } catch (err) {
+      console.error('Error loading draw:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadWishlistsForUser = async (participant, allParticipants) => {
+    const { data: mine } = await supabase
+      .from('wishlist_items')
+      .select('*')
+      .eq('participant_id', participant.id);
+    setMyWishlist(mine || []);
+
+    const recipientObj = allParticipants.find(p => p.name === participant.recipient_name);
+    if (recipientObj) {
+      const { data: theirs } = await supabase
+        .from('wishlist_items')
+        .select('*')
+        .eq('participant_id', recipientObj.id);
+      setRecipientWishlist(theirs || []);
+    } else {
+      setRecipientWishlist([]);
+    }
+  };
+
+  const computePairings = (participantsList) => {
+    const names = participantsList.map(p => p.name);
+    let attempts = 0;
+
+    while (attempts < 2000) {
+      attempts++;
+      let receivers = [...names];
+      for (let i = receivers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
+      }
+
+      let valid = true;
+      let map = {};
+      for (let i = 0; i < names.length; i++) {
+        map[names[i]] = receivers[i];
+      }
+
+      for (let i = 0; i < names.length; i++) {
+        const giver = names[i];
+        const receiver = map[giver];
+
+        if (giver === receiver) {
+          valid = false;
+          break;
+        }
+        if (map[receiver] === giver) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid) {
+        return names.map((name, idx) => ({
+          name: name,
+          recipient_name: receivers[idx]
+        }));
+      }
+    }
+    return null;
+  };
+
+  const handleCreateDraw = async (e) => {
+    e?.preventDefault();
+    const cleanSlug = drawSlugInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!cleanSlug) {
+      setDrawError(t.errorDuplicateSlug);
+      return;
+    }
+
+    setDrawError('');
+    setIsSaving(true);
+
+    const emergencyToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    const newDrawRecord = {
+      slug: cleanSlug,
+      admin_pin: adminPinInput.trim() || '1234',
+      emergency_token: emergencyToken,
+      budget: budget || '20€',
+      event_date: eventDate || ''
+    };
+
+    try {
+      const { data: insertedDraw, error: drawErr } = await supabase
+        .from('draws')
+        .insert(newDrawRecord)
+        .select()
+        .single();
+
+      if (drawErr) throw drawErr;
+
+      setDrawData(insertedDraw);
+      window.history.pushState({}, '', `?draw=${cleanSlug}`);
+      setAdminTab('setup');
+    } catch (err) {
+      console.error(err);
+      setDrawError(t.errorDuplicateSlug);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddParticipantSetup = (e) => {
+    e?.preventDefault();
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    if (setupParticipants.some(p => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      setDrawError(`El nom "${trimmed}" ja està a la llista.`);
+      return;
+    }
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    setSetupParticipants([...setupParticipants, { name: trimmed, pin }]);
+    setNameInput('');
+    setDrawError('');
+  };
+
+  const handleAddBulkSetup = () => {
+    const names = bulkInput.split(/[\n,]+/).map(n => n.trim()).filter(n => n.length > 0);
+    const existingNames = setupParticipants.map(p => p.name.toLowerCase());
+    const newItems = [];
+    
+    names.forEach(n => {
+      if (!existingNames.includes(n.toLowerCase())) {
+        newItems.push({ name: n, pin: Math.floor(1000 + Math.random() * 9000).toString() });
+        existingNames.push(n.toLowerCase());
+      }
+    });
+
+    setSetupParticipants([...setupParticipants, ...newItems]);
+    setBulkInput('');
+    setShowBulkInput(false);
+    setDrawError('');
+  };
+
+  const handleRemoveParticipantSetup = (index) => {
+    setSetupParticipants(setupParticipants.filter((_, i) => i !== index));
+  };
+
+  const handleRegeneratePinSetup = (index) => {
+    const updated = [...setupParticipants];
+    updated[index].pin = Math.floor(1000 + Math.random() * 9000).toString();
+    setSetupParticipants(updated);
+  };
+
+  const handleGenerateDrawAssignments = async () => {
+    if (setupParticipants.length < 3) {
+      setDrawError(t.errorMin3);
+      return;
+    }
+    if (!drawData) return;
+
+    setDrawError('');
+    setIsSaving(true);
+
+    const pairs = computePairings(setupParticipants);
+    if (!pairs) {
+      setDrawError("No s'ha pogut evitar el regal mutu amb aquest nombre de participants. Prova d'afegir-ne un de nou!");
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const participantRows = pairs.map((pair) => {
+        const originalObj = setupParticipants.find(p => p.name === pair.name);
+        return {
+          draw_slug: drawData.slug,
+          name: pair.name,
+          pin: originalObj.pin,
+          recipient_name: pair.recipient_name
+        };
+      });
+
+      const { data: insertedParts, error: partErr } = await supabase
+        .from('participants')
+        .insert(participantRows)
+        .select();
+
+      if (partErr) throw partErr;
+
+      setDbParticipants(insertedParts || []);
+      setAdminTab('results');
+    } catch (err) {
+      console.error(err);
+      setDrawError("Error guardant els participants a Supabase.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateDrawSettings = async (e) => {
+    e?.preventDefault();
+    if (!drawData) return;
+    setIsSaving(true);
+    setDrawError('');
+
+    try {
+      const updatedFields = {
+        admin_pin: adminPinInput.trim() || '1234',
+        budget: budget || '',
+        event_date: eventDate || ''
+      };
+
+      const { data, error } = await supabase
+        .from('draws')
+        .update(updatedFields)
+        .eq('slug', drawData.slug)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setDrawData(data);
+      alert("Canvis guardats correctament!");
+    } catch (err) {
+      console.error(err);
+      setDrawError("Error en actualitzar la configuració.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReRunDraw = async () => {
+    if (dbParticipants.length < 3) {
+      setDrawError(t.errorMin3);
+      return;
+    }
+    if (!confirm("Vols tornar a sortejar les assignacions evitant regals mutus?")) return;
+
+    setIsSaving(true);
+    const pairs = computePairings(dbParticipants);
+    if (!pairs) {
+      setDrawError("No s'ha pogut generar un sorteig vàlid sense regals mutus.");
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      for (let i = 0; i < pairs.length; i++) {
+        const participantObj = dbParticipants.find(p => p.name === pairs[i].name);
+        if (participantObj) {
+          await supabase
+            .from('participants')
+            .update({ recipient_name: pairs[i].recipient_name })
+            .eq('id', participantObj.id);
+        }
+      }
+
+      const { data: refreshedParts } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('draw_slug', drawData.slug);
+
+      if (refreshedParts) setDbParticipants(refreshedParts);
+      setIsSaving(false);
+      alert("Sorteig actualitzat!");
+    } catch (err) {
+      console.error(err);
+      setDrawError("Error en actualitzar les assignacions.");
+      setIsSaving(false);
+    }
+  };
+
+  const [newActiveName, setNewActiveName] = useState('');
+  const handleAddParticipantActive = async (e) => {
+    e?.preventDefault();
+    const trimmed = newActiveName.trim();
+    if (!trimmed || !drawData) return;
+
+    if (dbParticipants.some(p => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      setDrawError(`El participant "${trimmed}" ja existeix.`);
+      return;
+    }
+
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    try {
+      const { data, error } = await supabase
+        .from('participants')
+        .insert({
+          draw_slug: drawData.slug,
+          name: trimmed,
+          pin: pin,
+          recipient_name: 'Pendent de re-sorteig'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setDbParticipants([...dbParticipants, data]);
+      setNewActiveName('');
+      setDrawError('');
+    } catch (err) {
+      console.error(err);
+      setDrawError("Error afegint participant.");
+    }
+  };
+
+  const handleDeleteParticipantActive = async (participantId) => {
+    if (!confirm("Vols eliminar aquest participant?")) return;
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .delete()
+        .eq('id', participantId);
+
+      if (error) throw error;
+      setDbParticipants(dbParticipants.filter(p => p.id !== participantId));
+    } catch (err) {
+      console.error(err);
+      setDrawError("Error eliminant participant.");
+    }
+  };
+
+  const toggleAdminReveal = (id) => {
+    setRevealedAdminRecipients(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const getMasterUrl = () => drawData?.slug ? `${window.location.origin}${window.location.pathname}?draw=${drawData.slug}` : '';
+  const getEmergencyUrl = () => drawData?.slug && drawData?.emergency_token 
+    ? `${window.location.origin}${window.location.pathname}?draw=${drawData.slug}&admin=${drawData.emergency_token}` 
+    : '';
+
+  const copyMasterLink = () => {
+    navigator.clipboard.writeText(getMasterUrl());
+    setCopiedMasterLink(true);
+    setTimeout(() => setCopiedMasterLink(false), 2500);
+  };
+
+  const copyEmergencyLink = () => {
+    navigator.clipboard.writeText(getEmergencyUrl());
+    setCopiedEmergencyLink(true);
+    setTimeout(() => setCopiedEmergencyLink(false), 2500);
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e?.preventDefault();
+    setLoginError('');
+    const input = loginInput.trim();
+    if (!input) return;
+
+    if (!drawData) {
+      setLoginError("Selecciona o carrega un sorteig vàlid.");
+      return;
+    }
+
+    if (input === drawData.admin_pin) {
+      setMode('admin_panel');
+      setAdminTab(dbParticipants.length > 0 ? 'results' : 'setup');
+      setLoginInput('');
+      return;
+    }
+
+    const match = dbParticipants.find(p => p.pin === input);
+    if (match) {
+      setIsLoading(true);
+      await loadWishlistsForUser(match, dbParticipants);
+      setCurrentGiver(match);
+      setMode('participant_view');
+      setIsRevealed(false);
+      setLoginInput('');
+      setIsLoading(false);
+    } else {
+      setLoginError(t.errorIncorrectPin);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentGiver(null);
+    setLoginInput('');
+    setIsRevealed(false);
+    setLoginError('');
+    setMode('login');
+  };
+
+  const handleStartNewDrawWizard = () => {
+    window.history.pushState({}, '', window.location.pathname);
+    setDrawData(null);
+    setDbParticipants([]);
+    setSetupParticipants([]);
+    setDrawSlugInput('familia-2026');
+    setAdminPinInput('1234');
+    setBudget('30€');
+    setEventDate('');
+    setMode('admin_panel');
+    setAdminTab('setup');
+  };
+
+  const handleAddWishItem = async (e) => {
+    e?.preventDefault();
+    if (!newWishItem.trim() || !currentGiver) return;
+
+    const { data, error } = await supabase
+      .from('wishlist_items')
+      .insert({ participant_id: currentGiver.id, item_text: newWishItem.trim() })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setMyWishlist([...myWishlist, data]);
+      setNewWishItem('');
+    }
+  };
+
+  const handleRemoveWishItem = async (itemId) => {
+    const { error } = await supabase
+      .from('wishlist_items')
+      .delete()
+      .eq('id', itemId);
+
+    if (!error) {
+      setMyWishlist(myWishlist.filter(item => item.id !== itemId));
+    }
+  };
+
+  // Language Switcher component for top right
+  const LanguageToggle = () => (
+    <button
+      onClick={() => setLang(lang === 'cat' ? 'en' : 'cat')}
+      className="absolute top-4 right-4 bg-[#1B3B2D] hover:bg-[#28513D] border border-[#365A45] text-[#E9BD65] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition z-50"
+    >
+      <Globe className="w-3.5 h-3.5" />
+      <span>{lang === 'cat' ? 'EN' : 'CAT'}</span>
+    </button>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#071B14] text-[#5BC58A] flex flex-col items-center justify-center gap-3 relative">
+        <LanguageToggle />
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="text-xs text-[#B6BDAF]">{t.loading}</span>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 1. LOGIN SCREEN
+  // =========================================================================
+  if (mode === 'login') {
+    return (
+      <div className="min-h-screen bg-[#071B14] text-[#F8F3E7] font-sans flex flex-col justify-between p-4 relative">
+        <LanguageToggle />
+        <header className="max-w-md mx-auto w-full pt-8 text-center">
+          <div className="inline-flex items-center justify-center p-3 bg-[#123D29] border border-[#4BAE72]/40 rounded-2xl mb-3 shadow-lg text-[#5BC58A]">
+            <Gift className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-[#FFF9EC] tracking-tight">{t.title}</h1>
+          <p className="text-xs text-[#B6BDAF] mt-1">
+            {drawData ? `${t.activeDraw} "${drawData.slug}"` : t.accessPin}
+          </p>
+        </header>
+
+        <main className="max-w-md mx-auto w-full px-2 space-y-4">
+          <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            {!drawData ? (
+              <div className="text-center space-y-4 py-4">
+                <div className="w-12 h-12 bg-amber-500/10 text-[#E9BD65] border border-[#D6AA52]/40 rounded-2xl flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <h2 className="text-lg font-bold text-[#FFF9EC]">{t.noDrawSelected}</h2>
+                <p className="text-xs text-[#B6BDAF] leading-relaxed">
+                  {t.noDrawDesc} <code>?draw=slug-del-sorteig</code>) {t.orCreateNew}
+                </p>
+                <button
+                  onClick={handleStartNewDrawWizard}
+                  className="w-full py-3 bg-[#167344] hover:bg-[#218C55] text-[#FFF9EC] font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" /> {t.createNewDrawBtn}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleLoginSubmit} className="space-y-5 text-center">
+                <div>
+                  <h2 className="text-lg font-bold text-[#FFF9EC]">{t.identification}</h2>
+                  <p className="text-xs text-[#B6BDAF] mt-1">
+                    {t.enterPin} <span className="text-[#E9BD65] font-semibold">{t.pinOrAdmin}</span>
+                  </p>
+                </div>
+
+                <input
+                  type="password"
+                  maxLength={10}
+                  autoFocus
+                  placeholder="••••"
+                  value={loginInput}
+                  onChange={(e) => setLoginInput(e.target.value)}
+                  className="w-full max-w-[200px] mx-auto text-center text-3xl tracking-[0.4em] font-mono bg-[#071B14] border-2 border-[#365A45] rounded-2xl py-3 text-[#E9BD65] placeholder-slate-700 focus:outline-none focus:border-emerald-500 transition block"
+                />
+
+                {loginError && (
+                  <p className="text-xs text-[#E87575] font-medium bg-[#521E25]/60 border border-[#C95757]/40 p-2.5 rounded-xl">
+                    {loginError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!loginInput.trim()}
+                  className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] hover:from-[#218C55] hover:to-[#AC3544] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2"
+                >
+                  <Unlock className="w-4 h-4" /> {t.unlockBtn}
+                </button>
+
+                {drawData.budget && (
+                  <div className="pt-3 border-t border-[#294A38] text-xs text-[#B6BDAF] flex justify-center gap-4">
+                    <span>{t.budget} <strong className="text-[#E9BD65]">{drawData.budget}</strong></span>
+                    {drawData.event_date && <span>{t.date} <strong className="text-[#5BC58A]">{drawData.event_date}</strong></span>}
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={handleStartNewDrawWizard}
+              className="text-xs text-[#B6BDAF] hover:text-[#5BC58A] transition inline-flex items-center gap-1.5"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> {t.organizeAnother}
+            </button>
+          </div>
+        </main>
+
+        <footer className="max-w-md mx-auto w-full text-center text-[11px] text-[#718475] pb-4">
+          {t.syncSupabase}
+        </footer>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 2. PARTICIPANT VIEW
+  // =========================================================================
+  if (mode === 'participant_view' && currentGiver) {
+    return (
+      <div className="min-h-screen bg-[#071B14] text-[#F8F3E7] font-sans pb-16 relative">
+        <header className="border-b border-[#294A38] bg-[#102B20]/80 backdrop-blur sticky top-0 z-40">
+          <LanguageToggle />
+          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between pr-20">
+            <div className="flex items-center space-x-2">
+              <div className="bg-gradient-to-tr from-[#167344] to-[#8F2635] p-2 rounded-xl text-[#FFF9EC]">
+                <Gift className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-lg text-[#D7F2DE]">{t.title} ({drawData?.slug})</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-xs bg-[#1B3B2D] hover:bg-[#28513D] text-[#D6D0BF] px-3 py-1.5 rounded-lg border border-[#365A45] flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5 text-[#E87575]" />
+              <span>{t.logout}</span>
+            </button>
+          </div>
+        </header>
+
+        <main className="max-w-xl mx-auto px-4 pt-8 space-y-6">
+          <div className="bg-[#102B20] border border-[#294A38] px-4 py-3 rounded-2xl text-xs text-[#D6D0BF]">
+            {t.connectedParticipant} <strong className="text-[#5BC58A]">{currentGiver.name}</strong>
+          </div>
+
+          <div className="bg-[#102B20]/90 border border-[#294A38] rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6">
+            <div className="inline-flex items-center space-x-2 bg-[#123D29] border border-[#4BAE72]/40 text-[#83D9A5] text-xs font-semibold px-3 py-1 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-[#E9BD65]" />
+              <span>{t.privateAssignment}</span>
+            </div>
+
+            <h1 className="text-2xl font-extrabold text-[#FFF9EC]">
+              {t.hello} <span className="text-[#5BC58A]">{currentGiver.name}</span>! 🎁
+            </h1>
+
+            <div className="my-4">
+              {!isRevealed ? (
+                <button
+                  onClick={() => setIsRevealed(true)}
+                  className="w-full py-8 px-4 bg-gradient-to-br from-[#167344] to-[#104D32] hover:from-[#218C55] hover:to-[#17643F] text-[#FFF9EC] font-bold rounded-2xl shadow-xl border border-[#70C98B]/40 flex flex-col items-center justify-center space-y-2"
+                >
+                  <Eye className="w-8 h-8 text-emerald-200" />
+                  <span className="text-base sm:text-lg">{t.revealBtn}</span>
+                </button>
+              ) : (
+                <div className="p-6 bg-[#071B14] border-2 border-[#4BAE72]/60 rounded-2xl space-y-4 text-left">
+                  <div className="text-center">
+                    <div className="text-xs text-[#B6BDAF] uppercase tracking-wider mb-1">{t.myAssignmentIs}</div>
+                    <div className="text-3xl sm:text-4xl font-black text-[#E9BD65] my-2">
+                      🎁 {currentGiver.recipient_name} 🎁
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-[#294A38] space-y-2">
+                    <h3 className="text-xs font-bold text-[#83D9A5] uppercase tracking-wide flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5 text-[#E87575]" />
+                      {t.giftSuggestionsOf} {currentGiver.recipient_name}:
+                    </h3>
+                    {recipientWishlist.length > 0 ? (
+                      <ul className="space-y-1.5 bg-[#102B20] border border-[#294A38] p-3 rounded-xl">
+                        {recipientWishlist.map((item) => (
+                          <li key={item.id} className="text-xs text-[#E9E4D5] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                            {item.item_text}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-[#87988A] italic bg-[#102B20]/50 p-3 rounded-xl text-center">
+                        {t.noSuggestions}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={() => setIsRevealed(false)}
+                      className="text-xs text-[#B6BDAF] hover:text-[#E9E4D5] inline-flex items-center gap-1 underline"
+                    >
+                      <EyeOff className="w-3.5 h-3.5" /> {t.hideBtn}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-[#102B20]/90 border border-[#294A38] rounded-3xl p-6 shadow-xl space-y-4">
+            <div>
+              <h2 className="text-base font-bold text-[#FFF9EC] flex items-center gap-2">
+                <Heart className="w-5 h-5 text-[#E87575]" />
+                <span>{t.mySuggestions}</span>
+              </h2>
+              <p className="text-xs text-[#B6BDAF] mt-1">
+                {t.cloudSaved}
+              </p>
+            </div>
+
+            <form onSubmit={handleAddWishItem} className="flex gap-2">
+              <input
+                type="text"
+                placeholder={t.placeholderWish}
+                value={newWishItem}
+                onChange={(e) => setNewWishItem(e.target.value)}
+                className="flex-1 bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#FFF9EC] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!newWishItem.trim()}
+                className="bg-[#167344] hover:bg-[#218C55] disabled:opacity-50 text-[#FFF9EC] font-medium px-4 py-2 rounded-xl text-xs flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" /> {t.addBtn}
+              </button>
+            </form>
+
+            {myWishlist.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                {myWishlist.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between bg-[#071B14] border border-[#294A38] px-3.5 py-2.5 rounded-xl text-xs text-[#E9E4D5]"
+                  >
+                    <span>{item.item_text}</span>
+                    <button
+                      onClick={() => handleRemoveWishItem(item.id)}
+                      className="text-[#718475] hover:text-[#E87575]"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-4 text-[#87988A] text-xs border border-dashed border-[#294A38] rounded-xl">
+                {t.noMySuggestions}
+              </p>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 3. ADMIN PANEL
+  // =========================================================================
+  return (
+    <div className="min-h-screen bg-[#071B14] text-[#F8F3E7] font-sans pb-16 relative">
+      <header className="border-b border-[#294A38] bg-[#102B20]/90 backdrop-blur sticky top-0 z-40">
+        <LanguageToggle />
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between pr-20">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-tr from-[#E9BD65] to-[#B88935] p-2.5 rounded-2xl text-slate-950 font-bold">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg text-[#FFF9EC]">{t.organizerPanel}</h1>
+              <p className="text-xs text-[#B6BDAF]">{t.restrictedArea}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleStartNewDrawWizard}
+              className="text-xs bg-[#167344] hover:bg-[#218C55] text-[#FFF9EC] px-3 py-2 rounded-xl flex items-center gap-1 font-semibold"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> {t.newDraw}
+            </button>
+            <button
+              onClick={() => setMode('login')}
+              className="text-xs bg-[#1B3B2D] hover:bg-[#28513D] text-[#D6D0BF] px-3 py-2 rounded-xl flex items-center gap-1.5 border border-[#365A45]"
+            >
+              <KeyRound className="w-4 h-4 text-[#E9BD65]" /> {t.login}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 pt-8 space-y-6">
+        {drawError && (
+          <div className="bg-[#521E25]/80 border border-[#C95757]/60 text-[#FFD0CC] p-4 rounded-2xl text-xs flex items-center justify-between">
+            <span>{drawError}</span>
+            <button onClick={() => setDrawError('')}>✕</button>
+          </div>
+        )}
+
+        <div className="flex border-b border-[#294A38] gap-4">
+          {!drawData ? (
+            <button className="pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-[#5BC58A]">
+              {t.step1Create}
+            </button>
+          ) : dbParticipants.length === 0 ? (
+            <button className="pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-[#5BC58A]">
+              {t.step2AddParts} ({setupParticipants.length})
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => setAdminTab('results')}
+                className={`pb-3 text-sm font-semibold border-b-2 ${
+                  adminTab === 'results' ? 'border-emerald-500 text-[#5BC58A]' : 'border-transparent text-[#B6BDAF]'
+                }`}
+              >
+                {t.resultsAndParts} ({dbParticipants.length})
+              </button>
+              <button
+                onClick={() => setAdminTab('settings')}
+                className={`pb-3 text-sm font-semibold border-b-2 ${
+                  adminTab === 'settings' ? 'border-emerald-500 text-[#5BC58A]' : 'border-transparent text-[#B6BDAF]'
+                }`}
+              >
+                {t.modifyDraw}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* --- STEP 1: CREATE DRAW ONLY ("Comença") --- */}
+        {!drawData && (
+          <div className="max-w-xl mx-auto bg-[#102B20] border border-[#294A38] rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center p-3 bg-[#123D29] border border-[#4BAE72]/40 rounded-2xl text-[#5BC58A] mb-1">
+                <Settings className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-[#FFF9EC]">{t.setupConfigTitle}</h2>
+              <p className="text-xs text-[#B6BDAF]">
+                {t.setupConfigDesc}
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateDraw} className="space-y-4">
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">{t.slugLabel}</label>
+                <input
+                  type="text"
+                  value={drawSlugInput}
+                  onChange={(e) => setDrawSlugInput(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#5BC58A] font-mono"
+                  placeholder="familia-2026"
+                />
+                <p className="text-[10px] text-[#87988A] mt-1">{t.slugDesc}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">{t.eventDateLabel}</label>
+                <input
+                  type="text"
+                  placeholder="24 de Desembre"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#FFF9EC]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">{t.budgetLabel}</label>
+                <input
+                  type="text"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#FFF9EC]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#B6BDAF] mb-1">{t.adminPinLabel}</label>
+                <input
+                  type="text"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2.5 text-xs text-[#E9BD65] font-mono font-bold"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] hover:from-[#218C55] hover:to-[#AC3544] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-2xl text-sm flex items-center justify-center gap-2 mt-2 shadow-lg transition"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#F2D48B]" />}
+                <span>{isSaving ? t.creatingDraw : t.startBtn}</span>
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* --- STEP 2: ADD PARTICIPANTS & "Generar Sorteig" --- */}
+        {drawData && dbParticipants.length === 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 space-y-6">
+              <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-5 space-y-4">
+                <h3 className="font-bold text-[#FFF9EC] text-sm flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-[#5BC58A]" />
+                  <span>{t.addParticipant}</span>
+                </h3>
+
+                {!showBulkInput ? (
+                  <form onSubmit={handleAddParticipantSetup} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder={t.placeholderName}
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#FFF9EC]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!nameInput.trim()}
+                      className="w-full bg-[#167344] hover:bg-[#218C55] disabled:opacity-50 text-[#FFF9EC] font-medium py-2 rounded-xl text-xs"
+                    >
+                      {t.addParticipantBtn}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkInput(true)}
+                      className="w-full text-xs text-[#B6BDAF] hover:text-[#E9E4D5] py-1"
+                    >
+                      {t.pasteBulk}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      rows={4}
+                      placeholder={"Laura\nMarc\nClara"}
+                      value={bulkInput}
+                      onChange={(e) => setBulkInput(e.target.value)}
+                      className="w-full bg-[#071B14] border border-[#365A45] rounded-xl p-3 text-xs text-[#FFF9EC]"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={handleAddBulkSetup} className="flex-1 bg-[#167344] text-[#FFF9EC] py-2 rounded-xl text-xs font-semibold">
+                        {t.addBulkBtn}
+                      </button>
+                      <button onClick={() => setShowBulkInput(false)} className="bg-[#1B3B2D] text-[#D6D0BF] px-3 py-2 rounded-xl text-xs">
+                        {t.cancel}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-5 space-y-2 text-xs text-[#B6BDAF]">
+                <span className="font-bold text-[#FFF9EC] block mb-1">{t.drawCreated}</span>
+                <p>Slug: <strong className="text-[#5BC58A]">{drawData.slug}</strong></p>
+                <p>{t.budget} <strong className="text-[#E9BD65]">{drawData.budget}</strong></p>
+                {drawData.event_date && <p>{t.date} <strong className="text-[#FFF9EC]">{drawData.event_date}</strong></p>}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#294A38] pb-3">
+                <h3 className="font-bold text-[#FFF9EC] text-base">{t.addedParticipants}</h3>
+                <span className="text-xs text-[#5BC58A]">{setupParticipants.length} persones</span>
+              </div>
+
+              {setupParticipants.length === 0 ? (
+                <div className="py-10 text-center text-[#87988A] text-xs border border-dashed border-[#294A38] rounded-2xl">
+                  {t.min3Required}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {setupParticipants.map((person, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-[#071B14] border border-[#294A38] px-3.5 py-2.5 rounded-2xl text-xs">
+                      <div>
+                        <span className="font-bold text-[#FFF9EC] block">{person.name}</span>
+                        <span className="font-mono text-[#E9BD65] text-[11px]">PIN: <strong>{person.pin}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleRegeneratePinSetup(idx)} className="text-[#87988A] hover:text-[#E9BD65] p-1">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleRemoveParticipantSetup(idx)} className="text-[#87988A] hover:text-[#E87575] p-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={handleGenerateDrawAssignments}
+                disabled={setupParticipants.length < 3 || isSaving}
+                className="w-full py-3.5 bg-gradient-to-r from-[#167344] to-[#8F2635] disabled:opacity-40 text-[#FFF9EC] font-bold rounded-2xl text-sm flex items-center justify-center gap-2 mt-4"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#F2D48B]" />}
+                <span>{isSaving ? t.savingParticipants : t.generateDrawBtn}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* --- ORGANIZER MENU: RESULTS & ASSIGNMENTS --- */}
+        {drawData && dbParticipants.length > 0 && adminTab === 'results' && (
+          <div className="space-y-6">
+            <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#294A38] pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[#FFF9EC] flex items-center gap-2">
+                    <Check className="w-5 h-5 text-[#5BC58A]" />
+                    <span>Sorteig "{drawData.slug}" Actiu!</span>
+                  </h3>
+                  <p className="text-xs text-[#B6BDAF] mt-1">{t.shareLinkTitle}</p>
+                </div>
+                <button
+                  onClick={copyMasterLink}
+                  className="bg-[#167344] hover:bg-[#218C55] text-[#FFF9EC] text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2"
+                >
+                  {copiedMasterLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedMasterLink ? t.copied : t.copyLinkBtn}</span>
+                </button>
+              </div>
+
+              <div className="bg-[#4A3519]/40 border border-[#D6AA52]/40 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-[#E9BD65] text-xs font-bold">
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>{t.emergencyLinkTitle}</span>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value={getEmergencyUrl()}
+                    className="w-full bg-[#071B14] border border-[#D6AA52]/40 rounded-xl px-3 py-2 text-[11px] text-[#F2D48B] font-mono"
+                  />
+                  <button
+                    onClick={copyEmergencyLink}
+                    className="bg-[#B88935] text-slate-950 font-bold px-3 py-2 rounded-xl text-xs whitespace-nowrap"
+                  >
+                    {copiedEmergencyLink ? t.saveShort : t.copyShort}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-[#FFF9EC]">{t.manageParticipants}</h4>
+                  <button
+                    onClick={handleReRunDraw}
+                    disabled={isSaving}
+                    className="bg-[#1B3B2D] hover:bg-[#28513D] border border-[#365A45] text-[#E9BD65] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> {t.rerunDrawBtn}
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddParticipantActive} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={t.placeholderNewPart}
+                    value={newActiveName}
+                    onChange={(e) => setNewActiveName(e.target.value)}
+                    className="flex-1 bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#FFF9EC]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newActiveName.trim()}
+                    className="bg-[#167344] hover:bg-[#218C55] text-[#FFF9EC] px-4 py-2 rounded-xl text-xs font-semibold"
+                  >
+                    {t.addBtn}
+                  </button>
+                </form>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#294A38] text-[#B6BDAF] uppercase">
+                        <th className="py-3 px-4">{t.tableParticipant}</th>
+                        <th className="py-3 px-4">{t.tablePin}</th>
+                        <th className="py-3 px-4">{t.tableRegala}</th>
+                        <th className="py-3 px-4 text-right">{t.tableActions}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {dbParticipants.map((item) => {
+                        const isRevealedForAdmin = revealedAdminRecipients[item.id];
+                        return (
+                          <tr key={item.id}>
+                            <td className="py-3 px-4 font-bold text-[#FFF9EC]">{item.name}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-mono text-[#E9BD65] bg-[#4A3519]/50 border border-[#D6AA52]/40 px-2.5 py-1 rounded-lg font-bold">
+                                {item.pin}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-semibold ${isRevealedForAdmin ? 'text-[#5BC58A]' : 'text-[#87988A] italic'}`}>
+                                  {isRevealedForAdmin ? `🎁 ${item.recipient_name}` : '••••••••'}
+                                </span>
+                                <button
+                                  onClick={() => toggleAdminReveal(item.id)}
+                                  className="text-[#B6BDAF] hover:text-[#FFF9EC] p-1 bg-[#1B3B2D] rounded-lg border border-[#365A45]"
+                                  title={isRevealedForAdmin ? "Amagar destinatari" : "Revelar destinatari"}
+                                >
+                                  {isRevealedForAdmin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => handleDeleteParticipantActive(item.id)}
+                                className="text-[#718475] hover:text-[#E87575] p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- ORGANIZER MENU: MODIFY DRAW SETTINGS (Except Slug) --- */}
+        {drawData && dbParticipants.length > 0 && adminTab === 'settings' && (
+          <div className="bg-[#102B20] border border-[#294A38] rounded-3xl p-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-[#FFF9EC]">{t.modifyConfigTitle}</h3>
+              <p className="text-xs text-[#B6BDAF] mt-1">{t.modifyConfigDesc}</p>
+            </div>
+
+            <form onSubmit={handleUpdateDrawSettings} className="space-y-4 max-w-lg">
+              <div>
+                <label className="block text-[11px] text-[#B6BDAF] mb-1">{t.slugImmutable}</label>
+                <input
+                  type="text"
+                  disabled
+                  value={drawData.slug}
+                  className="w-full bg-[#071B14]/60 border border-[#294A38] rounded-xl px-3.5 py-2 text-xs text-[#87988A] font-mono cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-[#B6BDAF] mb-1">{t.adminPinLabel}</label>
+                <input
+                  type="text"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#E9BD65] font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-[#B6BDAF] mb-1">{t.budgetLabel}</label>
+                <input
+                  type="text"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#FFF9EC]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-[#B6BDAF] mb-1">{t.eventDateLabel}</label>
+                <input
+                  type="text"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full bg-[#071B14] border border-[#365A45] rounded-xl px-3.5 py-2 text-xs text-[#FFF9EC]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="py-3 px-6 bg-[#167344] hover:bg-[#218C55] text-[#FFF9EC] font-bold rounded-xl text-xs flex items-center gap-2"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{t.saveChanges}</span>
+              </button>
+            </form>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
